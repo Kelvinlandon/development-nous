@@ -10,6 +10,7 @@ import {
   TextInput,
   Modal,
   Platform,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -43,6 +44,11 @@ interface Report {
     notes: string;
   }>;
   electrical_equipment_list: string;
+  site_photos: Array<{
+    id: string;
+    base64_data: string;
+    caption: string;
+  }>;
   staff_print_name: string;
   signature_type: string;
   declaration_date: string;
@@ -253,6 +259,25 @@ export default function ReportDetailScreen() {
           <InfoRow label="Signature Type" value={report.signature_type === 'drawn' ? 'Drawn' : 'Typed'} />
           <InfoRow label="Date" value={report.declaration_date} />
         </View>
+
+        {/* Site Photos */}
+        {report.site_photos && report.site_photos.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Site Photos ({report.site_photos.length})</Text>
+            {report.site_photos.map((photo, index) => (
+              <View key={photo.id || index} style={styles.photoContainer}>
+                <Image
+                  source={{ uri: photo.base64_data }}
+                  style={styles.reportPhoto}
+                  resizeMode="cover"
+                />
+                {photo.caption && (
+                  <Text style={styles.photoCaption}>{photo.caption}</Text>
+                )}
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Email Status */}
         {report.email_sent && (
@@ -503,6 +528,23 @@ const styles = StyleSheet.create({
   emailStatusText: {
     fontSize: 13,
     color: '#333',
+  },
+  photoContainer: {
+    marginBottom: 16,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#f9f9f9',
+  },
+  reportPhoto: {
+    width: '100%',
+    height: 220,
+  },
+  photoCaption: {
+    padding: 10,
+    fontSize: 13,
+    color: '#666',
+    fontStyle: 'italic',
+    backgroundColor: '#f5f5f5',
   },
   footer: {
     flexDirection: 'row',

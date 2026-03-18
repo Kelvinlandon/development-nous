@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Modal,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -18,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import Constants from 'expo-constants';
 import SignatureCanvas from 'react-native-signature-canvas';
+import * as ImagePicker from 'expo-image-picker';
 
 const API_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || 
   process.env.EXPO_PUBLIC_BACKEND_URL || 
@@ -42,6 +44,11 @@ interface ChecklistItem {
   notes: string;
 }
 
+interface SitePhoto {
+  base64_data: string;
+  caption: string;
+}
+
 interface FormData {
   // Header
   staff_members: string;
@@ -60,6 +67,8 @@ interface FormData {
   checklist_comments: string;
   safety_checklist: ChecklistItem[];
   electrical_equipment_list: string;
+  // Photos
+  site_photos: SitePhoto[];
   // Declaration
   staff_print_name: string;
   signature_data: string;
@@ -73,6 +82,7 @@ export default function FormScreen() {
   const [currentStep, setCurrentStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [showSignaturePad, setShowSignaturePad] = useState(false);
+  const [editingCaptionIndex, setEditingCaptionIndex] = useState<number | null>(null);
   
   const today = new Date().toISOString().split('T')[0];
   
@@ -95,13 +105,14 @@ export default function FormScreen() {
       notes: '',
     })),
     electrical_equipment_list: '',
+    site_photos: [],
     staff_print_name: '',
     signature_data: '',
     signature_type: 'typed',
     declaration_date: today,
   });
 
-  const steps = ['Site Info', 'Hazards', 'Safety', 'Declare'];
+  const steps = ['Site Info', 'Hazards', 'Safety', 'Photos', 'Declare'];
 
   const updateField = (field: keyof FormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -125,6 +136,90 @@ export default function FormScreen() {
     signatureRef.current?.clearSignature();
   };
 
+  // Photo functions
+  const requestPermissions = async () => {
+    const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
+    const { status: libraryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (cameraStatus !== 'granted' || libraryStatus !== 'granted') {
+      Alert.alert('Permission Required', 'Please grant camera and photo library permissions to add photos.');
+      return false;
+    }
+    return true;
+  };
+
+  const takePhoto = async () => {
+    const hasPermission = await requestPermissions();
+    if (!hasPermission) return;
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.7,
+      base64: true,
+    });
+
+    if (!result.canceled && result.assets[0].base64) {
+      const newPhoto: SitePhoto = {
+        base64_data: `data:image/jpeg;base64,${result.assets[0].base64}`,
+        caption: '',
+      };
+      setFormData(prev => ({
+        ...prev,
+        site_photos: [...prev.site_photos, newPhoto],
+      }));
+    }
+  };
+
+  const pickFromLibrary = async () => {
+    const hasPermission = await requestPermissions();
+    if (!hasPermission) return;
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.7,
+      base64: true,
+    });
+
+    if (!result.canceled && result.assets[0].base64) {
+      const newPhoto: SitePhoto = {
+        base64_data: `data:image/jpeg;base64,${result.assets[0].base64}`,
+        caption: '',
+      };
+      setFormData(prev => ({
+        ...prev,
+        site_photos: [...prev.site_photos, newPhoto],
+      }));
+    }
+  };
+
+  const removePhoto = (index: number) => {
+    Alert.alert('Remove Photo', 'Are you sure you want to remove this photo?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: () => {
+          setFormData(prev => ({
+            ...prev,
+            site_photos: prev.site_photos.filter((_, i) => i !== index),
+          }));
+        },
+      },
+    ]);
+  };
+
+  const updatePhotoCaption = (index: number, caption: string) => {
+    setFormData(prev => {
+      const newPhotos = [...prev.site_photos];
+      newPhotos[index] = { ...newPhotos[index], caption };
+      return { ...prev, site_photos: newPhotos };
+    });
+  };
+
   const validateStep = (): boolean => {
     switch (currentStep) {
       case 0:
@@ -133,7 +228,7 @@ export default function FormScreen() {
           return false;
         }
         break;
-      case 3:
+      case 4: // Declaration step
         if (!formData.staff_print_name) {
           Alert.alert('Required Fields', 'Please enter your printed name');
           return false;
@@ -196,14 +291,20 @@ export default function FormScreen() {
   const renderStepIndicator = () => (
     <View style={styles.stepIndicator}>
       {steps.map((step, index) => (
-        <View key={step} style={styles.stepItem}>
+        <TouchableOpacity 
+          key={step} 
+          style={styles.stepItem}
+          onPress={() => {
+            if (index < currentStep) setCurrentStep(index);
+          }}
+        >
           <View style={[
             styles.stepCircle,
             index === currentStep && styles.stepCircleActive,
             index < currentStep && styles.stepCircleCompleted,
           ]}>
             {index < currentStep ? (
-              <Ionicons name="checkmark" size={14} color="#fff" />
+              <Ionicons name="checkmark" size={12} color="#fff" />
             ) : (
               <Text style={[
                 styles.stepNumber,
@@ -219,7 +320,7 @@ export default function FormScreen() {
           ]}>
             {step}
           </Text>
-        </View>
+        </TouchableOpacity>
       ))}
     </View>
   );
@@ -432,6 +533,67 @@ export default function FormScreen() {
     </ScrollView>
   );
 
+  const renderPhotosStep = () => (
+    <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
+      <View style={styles.photoHeader}>
+        <Text style={styles.sectionTitle}>Site Photos</Text>
+        <Text style={styles.photoCount}>{formData.site_photos.length} photo(s)</Text>
+      </View>
+      
+      <Text style={styles.hint}>Add photos to document the site conditions</Text>
+
+      {/* Photo Action Buttons */}
+      <View style={styles.photoActions}>
+        <TouchableOpacity style={styles.photoActionButton} onPress={takePhoto}>
+          <Ionicons name="camera" size={28} color="#4CAF50" />
+          <Text style={styles.photoActionText}>Take Photo</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.photoActionButton} onPress={pickFromLibrary}>
+          <Ionicons name="images" size={28} color="#4CAF50" />
+          <Text style={styles.photoActionText}>From Library</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Photo Grid */}
+      {formData.site_photos.length > 0 ? (
+        <View style={styles.photoGrid}>
+          {formData.site_photos.map((photo, index) => (
+            <View key={index} style={styles.photoCard}>
+              <Image
+                source={{ uri: photo.base64_data }}
+                style={styles.photoImage}
+                resizeMode="cover"
+              />
+              <TouchableOpacity
+                style={styles.removePhotoButton}
+                onPress={() => removePhoto(index)}
+              >
+                <Ionicons name="close-circle" size={24} color="#F44336" />
+              </TouchableOpacity>
+              <View style={styles.captionContainer}>
+                <TextInput
+                  style={styles.captionInput}
+                  value={photo.caption}
+                  onChangeText={(text) => updatePhotoCaption(index, text)}
+                  placeholder={`Caption for photo ${index + 1}`}
+                  placeholderTextColor="#999"
+                />
+              </View>
+            </View>
+          ))}
+        </View>
+      ) : (
+        <View style={styles.noPhotosContainer}>
+          <Ionicons name="camera-outline" size={64} color="#ddd" />
+          <Text style={styles.noPhotosText}>No photos added yet</Text>
+          <Text style={styles.noPhotosSubtext}>Tap the buttons above to add site photos</Text>
+        </View>
+      )}
+      
+      <View style={{ height: 100 }} />
+    </ScrollView>
+  );
+
   const renderDeclarationStep = () => (
     <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
       <View style={styles.declarationBox}>
@@ -541,7 +703,8 @@ export default function FormScreen() {
       case 0: return renderSiteInfoStep();
       case 1: return renderHazardsStep();
       case 2: return renderSafetyStep();
-      case 3: return renderDeclarationStep();
+      case 3: return renderPhotosStep();
+      case 4: return renderDeclarationStep();
       default: return null;
     }
   };
@@ -645,7 +808,7 @@ const styles = StyleSheet.create({
   stepIndicator: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingVertical: 16,
+    paddingVertical: 12,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
@@ -654,9 +817,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   stepCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: '#eee',
     alignItems: 'center',
     justifyContent: 'center',
@@ -669,7 +832,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#4CAF50',
   },
   stepNumber: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     color: '#999',
   },
@@ -677,7 +840,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   stepLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#999',
   },
   stepLabelActive: {
@@ -793,6 +956,89 @@ const styles = StyleSheet.create({
   optionTextActive: {
     color: '#fff',
   },
+  // Photo styles
+  photoHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  photoCount: {
+    fontSize: 14,
+    color: '#4CAF50',
+    fontWeight: '500',
+  },
+  photoActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginVertical: 16,
+  },
+  photoActionButton: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: '#4CAF50',
+    borderRadius: 12,
+    paddingVertical: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoActionText: {
+    color: '#4CAF50',
+    fontSize: 14,
+    fontWeight: '500',
+    marginTop: 6,
+  },
+  photoGrid: {
+    gap: 12,
+  },
+  photoCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  photoImage: {
+    width: '100%',
+    height: 200,
+  },
+  removePhotoButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+  },
+  captionContainer: {
+    padding: 12,
+  },
+  captionInput: {
+    fontSize: 14,
+    color: '#333',
+    padding: 8,
+    backgroundColor: '#f9f9f9',
+    borderRadius: 6,
+  },
+  noPhotosContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  noPhotosText: {
+    fontSize: 16,
+    color: '#999',
+    marginTop: 12,
+  },
+  noPhotosSubtext: {
+    fontSize: 13,
+    color: '#bbb',
+    marginTop: 4,
+  },
+  // Declaration styles
   declarationBox: {
     backgroundColor: '#E8F5E9',
     borderRadius: 8,

@@ -46,6 +46,12 @@ class SafetyChecklistItem(BaseModel):
     answer: Optional[str] = None  # "yes", "no", "na"
     notes: Optional[str] = None
 
+class SitePhoto(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    base64_data: str
+    caption: Optional[str] = None
+    timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+
 class SiteVisitReport(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     # Header Information
@@ -65,6 +71,8 @@ class SiteVisitReport(BaseModel):
     checklist_comments: str
     safety_checklist: List[SafetyChecklistItem]
     electrical_equipment_list: Optional[str] = None
+    # Site Photos
+    site_photos: List[SitePhoto] = []
     # Declaration
     staff_print_name: str
     signature_data: str  # base64 encoded signature image or typed name
@@ -74,6 +82,10 @@ class SiteVisitReport(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     email_sent: bool = False
     email_sent_to: Optional[str] = None
+
+class SitePhotoCreate(BaseModel):
+    base64_data: str
+    caption: Optional[str] = None
 
 class SiteVisitReportCreate(BaseModel):
     staff_members: str
@@ -90,6 +102,7 @@ class SiteVisitReportCreate(BaseModel):
     checklist_comments: str
     safety_checklist: List[SafetyChecklistItem]
     electrical_equipment_list: Optional[str] = None
+    site_photos: List[SitePhotoCreate] = []
     staff_print_name: str
     signature_data: str
     signature_type: str
@@ -302,6 +315,42 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
             logger.error(f"Error adding signature: {e}")
             story.append(Paragraph(f"[Signature: {report.staff_print_name}]", normal_style))
     
+    # Site Photos Section
+    if report.site_photos and len(report.site_photos) > 0:
+        story.append(Spacer(1, 20))
+        story.append(Paragraph("Site Photos", header_style))
+        
+        for i, photo in enumerate(report.site_photos):
+            try:
+                photo_data = photo.base64_data
+                if "," in photo_data:
+                    photo_data = photo_data.split(",")[1]
+                photo_bytes = base64.b64decode(photo_data)
+                photo_buffer = BytesIO(photo_bytes)
+                
+                # Add photo with reasonable size
+                photo_img = Image(photo_buffer, width=4*inch, height=3*inch)
+                photo_img.hAlign = 'CENTER'
+                story.append(photo_img)
+                
+                # Add caption if exists
+                if photo.caption:
+                    caption_style = ParagraphStyle(
+                        'PhotoCaption',
+                        parent=styles['Normal'],
+                        fontSize=9,
+                        alignment=TA_CENTER,
+                        textColor=colors.gray
+                    )
+                    story.append(Paragraph(f"Photo {i+1}: {photo.caption}", caption_style))
+                else:
+                    story.append(Paragraph(f"Photo {i+1}", ParagraphStyle('PhotoNum', parent=styles['Normal'], fontSize=9, alignment=TA_CENTER, textColor=colors.gray)))
+                
+                story.append(Spacer(1, 10))
+            except Exception as e:
+                logger.error(f"Error adding photo {i+1}: {e}")
+                story.append(Paragraph(f"[Photo {i+1} could not be loaded]", normal_style))
+    
     # Build PDF
     doc.build(story)
     buffer.seek(0)
@@ -344,7 +393,14 @@ async def update_settings(update: AppSettingsUpdate):
 # Report endpoints
 @api_router.post("/reports", response_model=SiteVisitReport)
 async def create_report(report: SiteVisitReportCreate):
-    report_obj = SiteVisitReport(**report.model_dump())
+    report_data = report.model_dump()
+    # Convert photos to SitePhoto objects with IDs
+    if report_data.get('site_photos'):
+        report_data['site_photos'] = [
+            SitePhoto(base64_data=p['base64_data'], caption=p.get('caption')).model_dump()
+            for p in report_data['site_photos']
+        ]
+    report_obj = SiteVisitReport(**report_data)
     await db.reports.insert_one(report_obj.model_dump())
     logger.info(f"Created report: {report_obj.id}")
     return report_obj
