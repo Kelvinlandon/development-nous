@@ -21,6 +21,7 @@ import Constants from 'expo-constants';
 import SignatureCanvas from 'react-native-signature-canvas';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
 const API_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || 
   process.env.EXPO_PUBLIC_BACKEND_URL || 
@@ -89,6 +90,12 @@ export default function FormScreen() {
   const [showSignaturePad, setShowSignaturePad] = useState(false);
   const [editingCaptionIndex, setEditingCaptionIndex] = useState<number | null>(null);
   
+  // Time picker states
+  const [showArrivalTimePicker, setShowArrivalTimePicker] = useState(false);
+  const [showDepartureTimePicker, setShowDepartureTimePicker] = useState(false);
+  const [arrivalTime, setArrivalTime] = useState<Date | null>(null);
+  const [departureTime, setDepartureTime] = useState<Date | null>(null);
+  
   const today = new Date().toISOString().split('T')[0];
   
   const [formData, setFormData] = useState<FormData>({
@@ -139,6 +146,51 @@ export default function FormScreen() {
 
   const clearSignature = () => {
     signatureRef.current?.clearSignature();
+  };
+
+  // Time picker functions
+  const formatTimeForDisplay = (date: Date | null): string => {
+    if (!date) return '';
+    return date.toLocaleTimeString('en-NZ', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  };
+
+  const formatTimeForStorage = (date: Date | null): string => {
+    if (!date) return '';
+    return date.toLocaleTimeString('en-NZ', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: false 
+    });
+  };
+
+  const handleArrivalTimeChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowArrivalTimePicker(false);
+    }
+    if (event.type === 'set' && selectedDate) {
+      setArrivalTime(selectedDate);
+      updateField('site_arrival_time', formatTimeForStorage(selectedDate));
+    }
+    if (Platform.OS === 'ios' && event.type === 'dismissed') {
+      setShowArrivalTimePicker(false);
+    }
+  };
+
+  const handleDepartureTimeChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowDepartureTimePicker(false);
+    }
+    if (event.type === 'set' && selectedDate) {
+      setDepartureTime(selectedDate);
+      updateField('site_departure_time', formatTimeForStorage(selectedDate));
+    }
+    if (Platform.OS === 'ios' && event.type === 'dismissed') {
+      setShowDepartureTimePicker(false);
+    }
   };
 
   // Photo functions
@@ -460,22 +512,108 @@ export default function FormScreen() {
       <View style={styles.row}>
         <View style={[styles.inputGroup, { flex: 1 }]}>
           <Text style={styles.label}>Arrival Time</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.site_arrival_time}
-            onChangeText={(text) => updateField('site_arrival_time', text)}
-            placeholder="HH:MM"
-          />
+          <TouchableOpacity 
+            style={styles.timePickerButton}
+            onPress={() => setShowArrivalTimePicker(true)}
+          >
+            <Ionicons name="time-outline" size={20} color="#4CAF50" />
+            <Text style={[
+              styles.timePickerText,
+              !formData.site_arrival_time && styles.timePickerPlaceholder
+            ]}>
+              {formData.site_arrival_time || 'Select time'}
+            </Text>
+          </TouchableOpacity>
+          {showArrivalTimePicker && (
+            Platform.OS === 'ios' ? (
+              <Modal
+                visible={showArrivalTimePicker}
+                transparent
+                animationType="slide"
+              >
+                <View style={styles.timePickerModal}>
+                  <View style={styles.timePickerModalContent}>
+                    <View style={styles.timePickerHeader}>
+                      <TouchableOpacity onPress={() => setShowArrivalTimePicker(false)}>
+                        <Text style={styles.timePickerCancel}>Cancel</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.timePickerTitle}>Arrival Time</Text>
+                      <TouchableOpacity onPress={() => setShowArrivalTimePicker(false)}>
+                        <Text style={styles.timePickerDone}>Done</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <DateTimePicker
+                      value={arrivalTime || new Date()}
+                      mode="time"
+                      display="spinner"
+                      onChange={handleArrivalTimeChange}
+                      style={{ height: 200 }}
+                    />
+                  </View>
+                </View>
+              </Modal>
+            ) : (
+              <DateTimePicker
+                value={arrivalTime || new Date()}
+                mode="time"
+                display="default"
+                onChange={handleArrivalTimeChange}
+              />
+            )
+          )}
         </View>
         <View style={{ width: 12 }} />
         <View style={[styles.inputGroup, { flex: 1 }]}>
           <Text style={styles.label}>Departure Time</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.site_departure_time}
-            onChangeText={(text) => updateField('site_departure_time', text)}
-            placeholder="HH:MM"
-          />
+          <TouchableOpacity 
+            style={styles.timePickerButton}
+            onPress={() => setShowDepartureTimePicker(true)}
+          >
+            <Ionicons name="time-outline" size={20} color="#4CAF50" />
+            <Text style={[
+              styles.timePickerText,
+              !formData.site_departure_time && styles.timePickerPlaceholder
+            ]}>
+              {formData.site_departure_time || 'Select time'}
+            </Text>
+          </TouchableOpacity>
+          {showDepartureTimePicker && (
+            Platform.OS === 'ios' ? (
+              <Modal
+                visible={showDepartureTimePicker}
+                transparent
+                animationType="slide"
+              >
+                <View style={styles.timePickerModal}>
+                  <View style={styles.timePickerModalContent}>
+                    <View style={styles.timePickerHeader}>
+                      <TouchableOpacity onPress={() => setShowDepartureTimePicker(false)}>
+                        <Text style={styles.timePickerCancel}>Cancel</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.timePickerTitle}>Departure Time</Text>
+                      <TouchableOpacity onPress={() => setShowDepartureTimePicker(false)}>
+                        <Text style={styles.timePickerDone}>Done</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <DateTimePicker
+                      value={departureTime || new Date()}
+                      mode="time"
+                      display="spinner"
+                      onChange={handleDepartureTimeChange}
+                      style={{ height: 200 }}
+                    />
+                  </View>
+                </View>
+              </Modal>
+            ) : (
+              <DateTimePicker
+                value={departureTime || new Date()}
+                mode="time"
+                display="default"
+                onChange={handleDepartureTimeChange}
+              />
+            )
+          )}
         </View>
       </View>
 
@@ -977,6 +1115,56 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
+  },
+  // Time picker styles
+  timePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#fff',
+    gap: 10,
+  },
+  timePickerText: {
+    fontSize: 15,
+    color: '#333',
+  },
+  timePickerPlaceholder: {
+    color: '#999',
+  },
+  timePickerModal: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  timePickerModalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  timePickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  timePickerTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  timePickerCancel: {
+    fontSize: 16,
+    color: '#666',
+  },
+  timePickerDone: {
+    fontSize: 16,
+    color: '#4CAF50',
+    fontWeight: '600',
   },
   switchGroup: {
     flexDirection: 'row',
