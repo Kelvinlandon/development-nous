@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import axios from 'axios';
 import Constants from 'expo-constants';
 import SignatureCanvas from 'react-native-signature-canvas';
 import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
 
 const API_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || 
   process.env.EXPO_PUBLIC_BACKEND_URL || 
@@ -47,6 +48,10 @@ interface ChecklistItem {
 interface SitePhoto {
   base64_data: string;
   caption: string;
+  timestamp?: string;
+  latitude?: number;
+  longitude?: number;
+  address?: string;
 }
 
 interface FormData {
@@ -148,9 +153,83 @@ export default function FormScreen() {
     return true;
   };
 
+  const requestLocationPermission = async () => {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    return status === 'granted';
+  };
+
+  const getLocationAndAddress = async (): Promise<{
+    latitude?: number;
+    longitude?: number;
+    address?: string;
+  }> => {
+    try {
+      const hasPermission = await requestLocationPermission();
+      if (!hasPermission) {
+        return {};
+      }
+
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+
+      const { latitude, longitude } = location.coords;
+
+      // Try to get address from coordinates
+      let address = '';
+      try {
+        const [geocode] = await Location.reverseGeocodeAsync({ latitude, longitude });
+        if (geocode) {
+          const parts = [];
+          if (geocode.streetNumber) parts.push(geocode.streetNumber);
+          if (geocode.street) parts.push(geocode.street);
+          if (geocode.city) parts.push(geocode.city);
+          if (geocode.region) parts.push(geocode.region);
+          address = parts.join(', ');
+        }
+      } catch (e) {
+        console.log('Reverse geocoding failed:', e);
+      }
+
+      return { latitude, longitude, address };
+    } catch (error) {
+      console.log('Error getting location:', error);
+      return {};
+    }
+  };
+
+  const formatTimestamp = () => {
+    const now = new Date();
+    return now.toISOString();
+  };
+
+  const generatePhotoCaption = (timestamp: string, address?: string, latitude?: number, longitude?: number) => {
+    const date = new Date(timestamp);
+    const dateStr = date.toLocaleDateString('en-NZ', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric' 
+    });
+    const timeStr = date.toLocaleTimeString('en-NZ', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    });
+    
+    let caption = `${dateStr} ${timeStr}`;
+    if (address) {
+      caption += ` - ${address}`;
+    } else if (latitude && longitude) {
+      caption += ` - GPS: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+    }
+    return caption;
+  };
+
   const takePhoto = async () => {
     const hasPermission = await requestPermissions();
     if (!hasPermission) return;
+
+    // Get location while camera is opening
+    const locationPromise = getLocationAndAddress();
 
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ['images'],
@@ -161,9 +240,17 @@ export default function FormScreen() {
     });
 
     if (!result.canceled && result.assets[0].base64) {
+      const timestamp = formatTimestamp();
+      const { latitude, longitude, address } = await locationPromise;
+      const autoCaption = generatePhotoCaption(timestamp, address, latitude, longitude);
+      
       const newPhoto: SitePhoto = {
         base64_data: `data:image/jpeg;base64,${result.assets[0].base64}`,
-        caption: '',
+        caption: autoCaption,
+        timestamp,
+        latitude,
+        longitude,
+        address,
       };
       setFormData(prev => ({
         ...prev,
@@ -176,6 +263,9 @@ export default function FormScreen() {
     const hasPermission = await requestPermissions();
     if (!hasPermission) return;
 
+    // Get current location for library photos too
+    const locationPromise = getLocationAndAddress();
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
@@ -185,9 +275,17 @@ export default function FormScreen() {
     });
 
     if (!result.canceled && result.assets[0].base64) {
+      const timestamp = formatTimestamp();
+      const { latitude, longitude, address } = await locationPromise;
+      const autoCaption = generatePhotoCaption(timestamp, address, latitude, longitude);
+      
       const newPhoto: SitePhoto = {
         base64_data: `data:image/jpeg;base64,${result.assets[0].base64}`,
-        caption: '',
+        caption: autoCaption,
+        timestamp,
+        latitude,
+        longitude,
+        address,
       };
       setFormData(prev => ({
         ...prev,

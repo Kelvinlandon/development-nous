@@ -51,6 +51,10 @@ class SitePhoto(BaseModel):
     base64_data: str
     caption: Optional[str] = None
     timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    # Location metadata
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    address: Optional[str] = None
 
 class SiteVisitReport(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -86,6 +90,10 @@ class SiteVisitReport(BaseModel):
 class SitePhotoCreate(BaseModel):
     base64_data: str
     caption: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    address: Optional[str] = None
+    timestamp: Optional[str] = None
 
 class SiteVisitReportCreate(BaseModel):
     staff_members: str
@@ -333,19 +341,36 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
                 photo_img.hAlign = 'CENTER'
                 story.append(photo_img)
                 
-                # Add caption if exists
+                # Build caption with metadata
+                caption_parts = []
                 if photo.caption:
-                    caption_style = ParagraphStyle(
-                        'PhotoCaption',
-                        parent=styles['Normal'],
-                        fontSize=9,
-                        alignment=TA_CENTER,
-                        textColor=colors.gray
-                    )
-                    story.append(Paragraph(f"Photo {i+1}: {photo.caption}", caption_style))
-                else:
-                    story.append(Paragraph(f"Photo {i+1}", ParagraphStyle('PhotoNum', parent=styles['Normal'], fontSize=9, alignment=TA_CENTER, textColor=colors.gray)))
+                    caption_parts.append(photo.caption)
                 
+                # Add timestamp
+                if photo.timestamp:
+                    try:
+                        from datetime import datetime as dt
+                        ts = dt.fromisoformat(photo.timestamp.replace('Z', '+00:00'))
+                        caption_parts.append(f"Taken: {ts.strftime('%Y-%m-%d %H:%M')}")
+                    except:
+                        caption_parts.append(f"Taken: {photo.timestamp}")
+                
+                # Add location info
+                if photo.address:
+                    caption_parts.append(f"Location: {photo.address}")
+                elif photo.latitude and photo.longitude:
+                    caption_parts.append(f"GPS: {photo.latitude:.6f}, {photo.longitude:.6f}")
+                
+                caption_text = " | ".join(caption_parts) if caption_parts else f"Photo {i+1}"
+                
+                caption_style = ParagraphStyle(
+                    'PhotoCaption',
+                    parent=styles['Normal'],
+                    fontSize=8,
+                    alignment=TA_CENTER,
+                    textColor=colors.gray
+                )
+                story.append(Paragraph(caption_text, caption_style))
                 story.append(Spacer(1, 10))
             except Exception as e:
                 logger.error(f"Error adding photo {i+1}: {e}")
@@ -397,7 +422,14 @@ async def create_report(report: SiteVisitReportCreate):
     # Convert photos to SitePhoto objects with IDs
     if report_data.get('site_photos'):
         report_data['site_photos'] = [
-            SitePhoto(base64_data=p['base64_data'], caption=p.get('caption')).model_dump()
+            SitePhoto(
+                base64_data=p['base64_data'], 
+                caption=p.get('caption'),
+                latitude=p.get('latitude'),
+                longitude=p.get('longitude'),
+                address=p.get('address'),
+                timestamp=p.get('timestamp') or datetime.utcnow().isoformat()
+            ).model_dump()
             for p in report_data['site_photos']
         ]
     report_obj = SiteVisitReport(**report_data)

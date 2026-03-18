@@ -48,6 +48,10 @@ interface Report {
     id: string;
     base64_data: string;
     caption: string;
+    timestamp?: string;
+    latitude?: number;
+    longitude?: number;
+    address?: string;
   }>;
   staff_print_name: string;
   signature_type: string;
@@ -271,9 +275,32 @@ export default function ReportDetailScreen() {
                   style={styles.reportPhoto}
                   resizeMode="cover"
                 />
-                {photo.caption && (
-                  <Text style={styles.photoCaption}>{photo.caption}</Text>
-                )}
+                <View style={styles.photoMetadata}>
+                  {photo.caption && (
+                    <Text style={styles.photoCaption}>{photo.caption}</Text>
+                  )}
+                  {photo.timestamp && (
+                    <View style={styles.metadataRow}>
+                      <Ionicons name="time-outline" size={12} color="#888" />
+                      <Text style={styles.metadataText}>
+                        {new Date(photo.timestamp).toLocaleString('en-NZ')}
+                      </Text>
+                    </View>
+                  )}
+                  {photo.address ? (
+                    <View style={styles.metadataRow}>
+                      <Ionicons name="location-outline" size={12} color="#888" />
+                      <Text style={styles.metadataText}>{photo.address}</Text>
+                    </View>
+                  ) : photo.latitude && photo.longitude ? (
+                    <View style={styles.metadataRow}>
+                      <Ionicons name="navigate-outline" size={12} color="#888" />
+                      <Text style={styles.metadataText}>
+                        GPS: {photo.latitude.toFixed(5)}, {photo.longitude.toFixed(5)}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
               </View>
             ))}
           </View>
@@ -539,12 +566,26 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 220,
   },
-  photoCaption: {
+  photoMetadata: {
     padding: 10,
-    fontSize: 13,
-    color: '#666',
-    fontStyle: 'italic',
     backgroundColor: '#f5f5f5',
+  },
+  photoCaption: {
+    fontSize: 13,
+    color: '#333',
+    fontWeight: '500',
+    marginBottom: 6,
+  },
+  metadataRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  metadataText: {
+    fontSize: 11,
+    color: '#666',
+    flex: 1,
   },
   footer: {
     flexDirection: 'row',
