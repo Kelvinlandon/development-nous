@@ -96,6 +96,9 @@ export default function FormScreen() {
   const [arrivalTime, setArrivalTime] = useState<Date | null>(null);
   const [departureTime, setDepartureTime] = useState<Date | null>(null);
   
+  // Weather states
+  const [fetchingWeather, setFetchingWeather] = useState(false);
+  
   const today = new Date().toISOString().split('T')[0];
   
   const [formData, setFormData] = useState<FormData>({
@@ -208,6 +211,81 @@ export default function FormScreen() {
   const requestLocationPermission = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
     return status === 'granted';
+  };
+
+  // Weather fetching function
+  const getWeatherDescription = (weatherCode: number): string => {
+    const weatherCodes: { [key: number]: string } = {
+      0: 'Clear sky',
+      1: 'Mainly clear',
+      2: 'Partly cloudy',
+      3: 'Overcast',
+      45: 'Foggy',
+      48: 'Depositing rime fog',
+      51: 'Light drizzle',
+      53: 'Moderate drizzle',
+      55: 'Dense drizzle',
+      56: 'Light freezing drizzle',
+      57: 'Dense freezing drizzle',
+      61: 'Slight rain',
+      63: 'Moderate rain',
+      65: 'Heavy rain',
+      66: 'Light freezing rain',
+      67: 'Heavy freezing rain',
+      71: 'Slight snow',
+      73: 'Moderate snow',
+      75: 'Heavy snow',
+      77: 'Snow grains',
+      80: 'Slight rain showers',
+      81: 'Moderate rain showers',
+      82: 'Violent rain showers',
+      85: 'Slight snow showers',
+      86: 'Heavy snow showers',
+      95: 'Thunderstorm',
+      96: 'Thunderstorm with slight hail',
+      99: 'Thunderstorm with heavy hail',
+    };
+    return weatherCodes[weatherCode] || 'Unknown';
+  };
+
+  const fetchWeatherConditions = async () => {
+    setFetchingWeather(true);
+    try {
+      const hasPermission = await requestLocationPermission();
+      if (!hasPermission) {
+        Alert.alert('Permission Required', 'Please grant location permission to fetch weather conditions.');
+        setFetchingWeather(false);
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      const { latitude, longitude } = location.coords;
+
+      // Call Open-Meteo API (free, no API key required)
+      const response = await axios.get(
+        `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=auto`
+      );
+
+      const current = response.data.current;
+      const temp = Math.round(current.temperature_2m);
+      const humidity = current.relative_humidity_2m;
+      const weatherCode = current.weather_code;
+      const windSpeed = Math.round(current.wind_speed_10m);
+      const weatherDesc = getWeatherDescription(weatherCode);
+
+      const weatherString = `${weatherDesc}, ${temp}°C, Humidity ${humidity}%, Wind ${windSpeed} km/h`;
+      
+      updateField('weather_conditions', weatherString);
+      
+    } catch (error) {
+      console.error('Error fetching weather:', error);
+      Alert.alert('Weather Error', 'Could not fetch weather conditions. Please enter manually.');
+    } finally {
+      setFetchingWeather(false);
+    }
   };
 
   const getLocationAndAddress = async (): Promise<{
@@ -631,12 +709,28 @@ export default function FormScreen() {
 
       <View style={styles.inputGroup}>
         <Text style={styles.label}>Weather Conditions</Text>
-        <TextInput
-          style={styles.input}
-          value={formData.weather_conditions}
-          onChangeText={(text) => updateField('weather_conditions', text)}
-          placeholder="e.g., Sunny, 20°C"
-        />
+        <View style={styles.weatherContainer}>
+          <TextInput
+            style={styles.weatherInput}
+            value={formData.weather_conditions}
+            onChangeText={(text) => updateField('weather_conditions', text)}
+            placeholder="e.g., Sunny, 20°C"
+          />
+          <TouchableOpacity 
+            style={styles.weatherButton}
+            onPress={fetchWeatherConditions}
+            disabled={fetchingWeather}
+          >
+            {fetchingWeather ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Ionicons name="cloud-outline" size={22} color="#fff" />
+            )}
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.weatherHint}>
+          Tap the cloud icon to auto-fetch current weather from your location
+        </Text>
       </View>
 
       <View style={styles.inputGroup}>
@@ -1165,6 +1259,34 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#4CAF50',
     fontWeight: '600',
+  },
+  // Weather styles
+  weatherContainer: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  weatherInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 15,
+    backgroundColor: '#fff',
+  },
+  weatherButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: '#4CAF50',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  weatherHint: {
+    fontSize: 11,
+    color: '#888',
+    marginTop: 4,
+    fontStyle: 'italic',
   },
   switchGroup: {
     flexDirection: 'row',
