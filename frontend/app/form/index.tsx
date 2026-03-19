@@ -96,14 +96,89 @@ export default function FormScreen() {
   const [arrivalTime, setArrivalTime] = useState<Date | null>(null);
   const [departureTime, setDepartureTime] = useState<Date | null>(null);
   
+  // Date picker states
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  
   // Weather states
   const [fetchingWeather, setFetchingWeather] = useState(false);
   
-  const today = new Date().toISOString().split('T')[0];
+  // Staff and Jobs lists
+  const [staffList, setStaffList] = useState<Array<{id: string, name: string}>>([]);
+  const [jobsList, setJobsList] = useState<Array<{id: string, job_number: string, job_name: string}>>([]);
+  const [showStaffPicker, setShowStaffPicker] = useState(false);
+  const [showJobPicker, setShowJobPicker] = useState(false);
+  const [newStaffName, setNewStaffName] = useState('');
+  const [newJobNumber, setNewJobNumber] = useState('');
+  const [newJobName, setNewJobName] = useState('');
+  const [selectedStaff, setSelectedStaff] = useState<string[]>([]);
+  
+  const today = new Date();
+  const todayString = today.toISOString().split('T')[0];
+  
+  // Fetch staff and jobs on mount
+  useEffect(() => {
+    fetchStaffAndJobs();
+  }, []);
+
+  const fetchStaffAndJobs = async () => {
+    try {
+      const [staffRes, jobsRes] = await Promise.all([
+        axios.get(`${API_URL}/api/staff`),
+        axios.get(`${API_URL}/api/jobs`)
+      ]);
+      setStaffList(staffRes.data);
+      setJobsList(jobsRes.data);
+    } catch (error) {
+      console.error('Error fetching staff/jobs:', error);
+    }
+  };
+
+  const addNewStaff = async () => {
+    if (!newStaffName.trim()) return;
+    try {
+      const response = await axios.post(`${API_URL}/api/staff`, { name: newStaffName.trim() });
+      setStaffList(prev => [...prev, response.data].sort((a, b) => a.name.localeCompare(b.name)));
+      setNewStaffName('');
+      // Auto-select the new staff
+      toggleStaffSelection(response.data.name);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to add staff member');
+    }
+  };
+
+  const addNewJob = async () => {
+    if (!newJobNumber.trim() || !newJobName.trim()) return;
+    try {
+      const response = await axios.post(`${API_URL}/api/jobs`, { 
+        job_number: newJobNumber.trim(),
+        job_name: newJobName.trim()
+      });
+      setJobsList(prev => [...prev, response.data].sort((a, b) => a.job_number.localeCompare(b.job_number)));
+      // Auto-select the new job
+      const jobDisplay = `${response.data.job_number} - ${response.data.job_name}`;
+      updateField('job_no_name', jobDisplay);
+      setNewJobNumber('');
+      setNewJobName('');
+      setShowJobPicker(false);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to add job');
+    }
+  };
+
+  const toggleStaffSelection = (staffName: string) => {
+    setSelectedStaff(prev => {
+      const newSelection = prev.includes(staffName)
+        ? prev.filter(s => s !== staffName)
+        : [...prev, staffName];
+      updateField('staff_members', newSelection.join(', '));
+      return newSelection;
+    });
+  };
   
   const [formData, setFormData] = useState<FormData>({
     staff_members: '',
-    date: today,
+    date: todayString,
     job_no_name: '',
     site_arrival_time: '',
     site_departure_time: '',
@@ -124,7 +199,7 @@ export default function FormScreen() {
     staff_print_name: '',
     signature_data: '',
     signature_type: 'typed',
-    declaration_date: today,
+    declaration_date: todayString,
   });
 
   const steps = ['Site Info', 'Hazards', 'Safety', 'Photos', 'Declare'];
@@ -193,6 +268,33 @@ export default function FormScreen() {
     }
     if (Platform.OS === 'ios' && event.type === 'dismissed') {
       setShowDepartureTimePicker(false);
+    }
+  };
+
+  // Date picker handler
+  const formatDateForDisplay = (date: Date): string => {
+    return date.toLocaleDateString('en-NZ', {
+      weekday: 'short',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
+  const formatDateForStorage = (date: Date): string => {
+    return date.toISOString().split('T')[0];
+  };
+
+  const handleDateChange = (event: DateTimePickerEvent, date?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+    if (event.type === 'set' && date) {
+      setSelectedDate(date);
+      updateField('date', formatDateForStorage(date));
+    }
+    if (Platform.OS === 'ios' && event.type === 'dismissed') {
+      setShowDatePicker(false);
     }
   };
 
@@ -557,33 +659,87 @@ export default function FormScreen() {
     <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
       <View style={styles.inputGroup}>
         <Text style={styles.label}>Staff Member(s) *</Text>
-        <TextInput
-          style={styles.input}
-          value={formData.staff_members}
-          onChangeText={(text) => updateField('staff_members', text)}
-          placeholder="Enter staff names"
-        />
+        <TouchableOpacity
+          style={styles.pickerButton}
+          onPress={() => setShowStaffPicker(true)}
+        >
+          <Ionicons name="people-outline" size={20} color="#4CAF50" />
+          <Text style={[
+            styles.pickerButtonText,
+            !formData.staff_members && styles.pickerButtonPlaceholder
+          ]}>
+            {formData.staff_members || 'Select staff members'}
+          </Text>
+          <Ionicons name="chevron-down" size={20} color="#999" />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.row}>
         <View style={[styles.inputGroup, { flex: 1 }]}>
           <Text style={styles.label}>Date *</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.date}
-            onChangeText={(text) => updateField('date', text)}
-            placeholder="YYYY-MM-DD"
-          />
+          <TouchableOpacity 
+            style={styles.datePickerButton}
+            onPress={() => setShowDatePicker(true)}
+          >
+            <Ionicons name="calendar-outline" size={20} color="#4CAF50" />
+            <Text style={styles.datePickerText}>
+              {formatDateForDisplay(selectedDate)}
+            </Text>
+          </TouchableOpacity>
+          {showDatePicker && (
+            Platform.OS === 'ios' ? (
+              <Modal
+                visible={showDatePicker}
+                transparent
+                animationType="slide"
+              >
+                <View style={styles.timePickerModal}>
+                  <View style={styles.timePickerModalContent}>
+                    <View style={styles.timePickerHeader}>
+                      <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                        <Text style={styles.timePickerCancel}>Cancel</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.timePickerTitle}>Select Date</Text>
+                      <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                        <Text style={styles.timePickerDone}>Done</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <DateTimePicker
+                      value={selectedDate}
+                      mode="date"
+                      display="spinner"
+                      onChange={handleDateChange}
+                      style={{ height: 200 }}
+                    />
+                  </View>
+                </View>
+              </Modal>
+            ) : (
+              <DateTimePicker
+                value={selectedDate}
+                mode="date"
+                display="default"
+                onChange={handleDateChange}
+              />
+            )
+          )}
         </View>
         <View style={{ width: 12 }} />
         <View style={[styles.inputGroup, { flex: 1 }]}>
           <Text style={styles.label}>Job No. / Name *</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.job_no_name}
-            onChangeText={(text) => updateField('job_no_name', text)}
-            placeholder="Job reference"
-          />
+          <TouchableOpacity
+            style={styles.pickerButton}
+            onPress={() => setShowJobPicker(true)}
+          >
+            <Ionicons name="briefcase-outline" size={20} color="#4CAF50" />
+            <Text style={[
+              styles.pickerButtonText,
+              !formData.job_no_name && styles.pickerButtonPlaceholder
+            ]} numberOfLines={1}>
+              {formData.job_no_name || 'Select job'}
+            </Text>
+            <Ionicons name="chevron-down" size={20} color="#999" />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -1126,6 +1282,148 @@ export default function FormScreen() {
           </View>
         </SafeAreaView>
       </Modal>
+
+      {/* Staff Picker Modal */}
+      <Modal
+        visible={showStaffPicker}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowStaffPicker(false)}
+      >
+        <View style={styles.pickerModalOverlay}>
+          <View style={styles.pickerModalContent}>
+            <View style={styles.pickerModalHeader}>
+              <Text style={styles.pickerModalTitle}>Select Staff Members</Text>
+              <TouchableOpacity onPress={() => setShowStaffPicker(false)}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.pickerList}>
+              {staffList.map((staff) => (
+                <TouchableOpacity
+                  key={staff.id}
+                  style={styles.pickerItem}
+                  onPress={() => toggleStaffSelection(staff.name)}
+                >
+                  <Ionicons 
+                    name={selectedStaff.includes(staff.name) ? "checkbox" : "square-outline"} 
+                    size={24} 
+                    color={selectedStaff.includes(staff.name) ? "#4CAF50" : "#999"} 
+                  />
+                  <Text style={styles.pickerItemText}>{staff.name}</Text>
+                </TouchableOpacity>
+              ))}
+              
+              {staffList.length === 0 && (
+                <Text style={styles.emptyListText}>No staff members yet. Add one below.</Text>
+              )}
+            </ScrollView>
+            
+            <View style={styles.addNewSection}>
+              <Text style={styles.addNewLabel}>Add New Staff Member</Text>
+              <View style={styles.addNewRow}>
+                <TextInput
+                  style={styles.addNewInput}
+                  value={newStaffName}
+                  onChangeText={setNewStaffName}
+                  placeholder="Staff name"
+                />
+                <TouchableOpacity 
+                  style={styles.addNewButton}
+                  onPress={addNewStaff}
+                >
+                  <Ionicons name="add" size={24} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            </View>
+            
+            <TouchableOpacity 
+              style={styles.pickerDoneButton}
+              onPress={() => setShowStaffPicker(false)}
+            >
+              <Text style={styles.pickerDoneText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Job Picker Modal */}
+      <Modal
+        visible={showJobPicker}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowJobPicker(false)}
+      >
+        <View style={styles.pickerModalOverlay}>
+          <View style={styles.pickerModalContent}>
+            <View style={styles.pickerModalHeader}>
+              <Text style={styles.pickerModalTitle}>Select Job</Text>
+              <TouchableOpacity onPress={() => setShowJobPicker(false)}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.pickerList}>
+              {jobsList.map((job) => (
+                <TouchableOpacity
+                  key={job.id}
+                  style={styles.pickerItem}
+                  onPress={() => {
+                    const jobDisplay = `${job.job_number} - ${job.job_name}`;
+                    updateField('job_no_name', jobDisplay);
+                    setShowJobPicker(false);
+                  }}
+                >
+                  <Ionicons name="briefcase-outline" size={20} color="#4CAF50" />
+                  <View style={{ flex: 1, marginLeft: 10 }}>
+                    <Text style={styles.jobNumber}>{job.job_number}</Text>
+                    <Text style={styles.jobName}>{job.job_name}</Text>
+                  </View>
+                  {formData.job_no_name === `${job.job_number} - ${job.job_name}` && (
+                    <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
+                  )}
+                </TouchableOpacity>
+              ))}
+              
+              {jobsList.length === 0 && (
+                <Text style={styles.emptyListText}>No jobs yet. Add one below.</Text>
+              )}
+            </ScrollView>
+            
+            <View style={styles.addNewSection}>
+              <Text style={styles.addNewLabel}>Add New Job</Text>
+              <TextInput
+                style={[styles.addNewInput, { marginBottom: 8 }]}
+                value={newJobNumber}
+                onChangeText={setNewJobNumber}
+                placeholder="Job number (e.g., JOB-001)"
+              />
+              <View style={styles.addNewRow}>
+                <TextInput
+                  style={styles.addNewInput}
+                  value={newJobName}
+                  onChangeText={setNewJobName}
+                  placeholder="Job name"
+                />
+                <TouchableOpacity 
+                  style={styles.addNewButton}
+                  onPress={addNewJob}
+                >
+                  <Ionicons name="add" size={24} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            </View>
+            
+            <TouchableOpacity 
+              style={styles.pickerDoneButton}
+              onPress={() => setShowJobPicker(false)}
+            >
+              <Text style={styles.pickerDoneText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1227,6 +1525,22 @@ const styles = StyleSheet.create({
   },
   timePickerPlaceholder: {
     color: '#999',
+  },
+  // Date picker styles
+  datePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#fff',
+    gap: 10,
+  },
+  datePickerText: {
+    fontSize: 15,
+    color: '#333',
+    flex: 1,
   },
   timePickerModal: {
     flex: 1,
@@ -1620,6 +1934,128 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   signatureSaveText: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  // Picker styles
+  pickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#fff',
+    gap: 10,
+  },
+  pickerButtonText: {
+    flex: 1,
+    fontSize: 15,
+    color: '#333',
+  },
+  pickerButtonPlaceholder: {
+    color: '#999',
+  },
+  pickerModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  pickerModalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+  },
+  pickerModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  pickerModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  pickerList: {
+    maxHeight: 300,
+    padding: 16,
+  },
+  pickerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  pickerItemText: {
+    fontSize: 16,
+    color: '#333',
+    marginLeft: 12,
+    flex: 1,
+  },
+  jobNumber: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  jobName: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 2,
+  },
+  emptyListText: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
+  addNewSection: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    backgroundColor: '#f9f9f9',
+  },
+  addNewLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 8,
+  },
+  addNewRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  addNewInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 15,
+    backgroundColor: '#fff',
+  },
+  addNewButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: '#4CAF50',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pickerDoneButton: {
+    margin: 16,
+    backgroundColor: '#4CAF50',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  pickerDoneText: {
     fontSize: 16,
     color: '#fff',
     fontWeight: '600',

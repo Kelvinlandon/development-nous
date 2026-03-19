@@ -41,6 +41,24 @@ logger = logging.getLogger(__name__)
 
 # ================== Models ==================
 
+class StaffMember(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class Job(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    job_number: str
+    job_name: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class StaffMemberCreate(BaseModel):
+    name: str
+
+class JobCreate(BaseModel):
+    job_number: str
+    job_name: str
+
 class SafetyChecklistItem(BaseModel):
     question: str
     answer: Optional[str] = None  # "yes", "no", "na"
@@ -386,6 +404,54 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
 @api_router.get("/")
 async def root():
     return {"message": "Site Visit Checklist API", "version": "1.0"}
+
+# Staff Member endpoints
+@api_router.get("/staff", response_model=List[StaffMember])
+async def get_staff():
+    staff = await db.staff.find().sort("name", 1).to_list(1000)
+    return [StaffMember(**s) for s in staff]
+
+@api_router.post("/staff", response_model=StaffMember)
+async def create_staff(staff: StaffMemberCreate):
+    # Check if already exists
+    existing = await db.staff.find_one({"name": {"$regex": f"^{staff.name}$", "$options": "i"}})
+    if existing:
+        return StaffMember(**existing)
+    
+    staff_obj = StaffMember(name=staff.name)
+    await db.staff.insert_one(staff_obj.model_dump())
+    return staff_obj
+
+@api_router.delete("/staff/{staff_id}")
+async def delete_staff(staff_id: str):
+    result = await db.staff.delete_one({"id": staff_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Staff member not found")
+    return {"message": "Staff member deleted"}
+
+# Job endpoints
+@api_router.get("/jobs", response_model=List[Job])
+async def get_jobs():
+    jobs = await db.jobs.find().sort("job_number", 1).to_list(1000)
+    return [Job(**j) for j in jobs]
+
+@api_router.post("/jobs", response_model=Job)
+async def create_job(job: JobCreate):
+    # Check if already exists
+    existing = await db.jobs.find_one({"job_number": {"$regex": f"^{job.job_number}$", "$options": "i"}})
+    if existing:
+        return Job(**existing)
+    
+    job_obj = Job(job_number=job.job_number, job_name=job.job_name)
+    await db.jobs.insert_one(job_obj.model_dump())
+    return job_obj
+
+@api_router.delete("/jobs/{job_id}")
+async def delete_job(job_id: str):
+    result = await db.jobs.delete_one({"id": job_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return {"message": "Job deleted"}
 
 # Settings endpoints
 @api_router.get("/settings", response_model=AppSettings)
