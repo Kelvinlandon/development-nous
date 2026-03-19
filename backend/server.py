@@ -195,36 +195,36 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
     RED = colors.HexColor('#F44336')
     
     def on_first_page(canvas, doc):
-        """Draw a dark header bar with logo and Harry on the first page"""
+        """Draw a print-friendly header with logo and Harry on the first page"""
         canvas.saveState()
-        # Dark header background
-        canvas.setFillColor(DARK)
-        canvas.rect(0, A4[1] - 85, A4[0], 85, fill=True, stroke=False)
+        # Light green header background (print-friendly)
+        canvas.setFillColor(LIGHT_GREEN)
+        canvas.rect(0, A4[1] - 110, A4[0], 110, fill=True, stroke=False)
         
         # Green accent line under header
         canvas.setFillColor(GREEN)
-        canvas.rect(0, A4[1] - 88, A4[0], 3, fill=True, stroke=False)
+        canvas.rect(0, A4[1] - 113, A4[0], 3, fill=True, stroke=False)
         
-        # Add DNL logo (center)
+        # Add DNL logo (left side)
         logo_path = ROOT_DIR / 'assets' / 'dnl_logo.png'
         if logo_path.exists():
             try:
-                canvas.drawImage(str(logo_path), A4[0]/2 - 55, A4[1] - 65, width=110, height=40, preserveAspectRatio=True, mask='auto')
+                canvas.drawImage(str(logo_path), 30, A4[1] - 80, width=120, height=45, preserveAspectRatio=True, mask='auto')
             except Exception:
                 pass
         
-        # Add Harry (right side)
+        # Add Harry (right side - twice as big)
         harry_path = ROOT_DIR / 'assets' / 'harry.png'
         if harry_path.exists():
             try:
-                canvas.drawImage(str(harry_path), A4[0] - 80, A4[1] - 78, width=55, height=55, preserveAspectRatio=True, mask='auto')
+                canvas.drawImage(str(harry_path), A4[0] - 130, A4[1] - 108, width=110, height=110, preserveAspectRatio=True, mask='auto')
             except Exception:
                 pass
         
         # Tagline
-        canvas.setFillColor(GREEN)
-        canvas.setFont('Helvetica-Oblique', 8)
-        canvas.drawCentredString(A4[0]/2, A4[1] - 80, "Take ya time and Paws for safety!")
+        canvas.setFillColor(DARK_GREEN)
+        canvas.setFont('Helvetica-Oblique', 9)
+        canvas.drawCentredString(A4[0]/2, A4[1] - 100, "Take ya time and Paws for safety!")
         
         # Footer on every page
         canvas.setFillColor(LIGHT_GRAY)
@@ -264,7 +264,7 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
         pagesize=A4,
         rightMargin=20*mm,
         leftMargin=20*mm,
-        topMargin=95,  # Space for header on first page
+        topMargin=120,  # Space for header on first page
         bottomMargin=40
     )
     
