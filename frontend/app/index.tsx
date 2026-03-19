@@ -108,7 +108,7 @@ export default function HomeScreen() {
         
         {/* Tagline */}
         <View style={styles.taglineContainer}>
-          <Text style={styles.taglineMain}>Paws for a moment for safety</Text>
+          <Text style={styles.taglineMain}>Take ya time and Paws for safety!</Text>
           <Text style={styles.taglineSub}>Don't leave the office without the treats!</Text>
         </View>
       </View>
