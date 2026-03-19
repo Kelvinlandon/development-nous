@@ -180,157 +180,319 @@ class EmailResponse(BaseModel):
 # ================== PDF Generation ==================
 
 def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
-    """Generate a PDF from the site visit report"""
+    """Generate a beautiful PDF from the site visit report"""
     buffer = BytesIO()
+    
+    # Colors
+    GREEN = colors.HexColor('#4CAF50')
+    DARK_GREEN = colors.HexColor('#2E7D32')
+    LIGHT_GREEN = colors.HexColor('#E8F5E9')
+    DARK = colors.HexColor('#1a1a1a')
+    GRAY = colors.HexColor('#666666')
+    LIGHT_GRAY = colors.HexColor('#f5f5f5')
+    WHITE = colors.white
+    ORANGE = colors.HexColor('#FF9800')
+    RED = colors.HexColor('#F44336')
+    
+    def on_first_page(canvas, doc):
+        """Draw a dark header bar with logo and Harry on the first page"""
+        canvas.saveState()
+        # Dark header background
+        canvas.setFillColor(DARK)
+        canvas.rect(0, A4[1] - 85, A4[0], 85, fill=True, stroke=False)
+        
+        # Green accent line under header
+        canvas.setFillColor(GREEN)
+        canvas.rect(0, A4[1] - 88, A4[0], 3, fill=True, stroke=False)
+        
+        # Add DNL logo (center)
+        logo_path = ROOT_DIR / 'assets' / 'dnl_logo.png'
+        if logo_path.exists():
+            try:
+                canvas.drawImage(str(logo_path), A4[0]/2 - 55, A4[1] - 65, width=110, height=40, preserveAspectRatio=True, mask='auto')
+            except Exception:
+                pass
+        
+        # Add Harry (right side)
+        harry_path = ROOT_DIR / 'assets' / 'harry.png'
+        if harry_path.exists():
+            try:
+                canvas.drawImage(str(harry_path), A4[0] - 80, A4[1] - 78, width=55, height=55, preserveAspectRatio=True, mask='auto')
+            except Exception:
+                pass
+        
+        # Tagline
+        canvas.setFillColor(GREEN)
+        canvas.setFont('Helvetica-Oblique', 8)
+        canvas.drawCentredString(A4[0]/2, A4[1] - 80, "Take ya time and Paws for safety!")
+        
+        # Footer on every page
+        canvas.setFillColor(LIGHT_GRAY)
+        canvas.rect(0, 0, A4[0], 30, fill=True, stroke=False)
+        canvas.setFillColor(GREEN)
+        canvas.rect(0, 30, A4[0], 2, fill=True, stroke=False)
+        canvas.setFillColor(GRAY)
+        canvas.setFont('Helvetica', 7)
+        canvas.drawCentredString(A4[0]/2, 12, f"{settings.company_name}  |  SafetyPaws Site Visit Report  |  {report.date}")
+        
+        canvas.restoreState()
+    
+    def on_later_pages(canvas, doc):
+        """Footer only on subsequent pages"""
+        canvas.saveState()
+        # Footer
+        canvas.setFillColor(LIGHT_GRAY)
+        canvas.rect(0, 0, A4[0], 30, fill=True, stroke=False)
+        canvas.setFillColor(GREEN)
+        canvas.rect(0, 30, A4[0], 2, fill=True, stroke=False)
+        canvas.setFillColor(GRAY)
+        canvas.setFont('Helvetica', 7)
+        canvas.drawCentredString(A4[0]/2, 12, f"{settings.company_name}  |  SafetyPaws Site Visit Report  |  Page {doc.page}")
+        
+        # Small Harry in top right corner
+        harry_path = ROOT_DIR / 'assets' / 'harry.png'
+        if harry_path.exists():
+            try:
+                canvas.drawImage(str(harry_path), A4[0] - 50, A4[1] - 45, width=30, height=30, preserveAspectRatio=True, mask='auto')
+            except Exception:
+                pass
+        
+        canvas.restoreState()
+    
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
         rightMargin=20*mm,
         leftMargin=20*mm,
-        topMargin=15*mm,
-        bottomMargin=15*mm
+        topMargin=95,  # Space for header on first page
+        bottomMargin=40
     )
     
     story = []
     styles = getSampleStyleSheet()
     
-    # Custom styles
+    # ---- Custom Styles ----
     title_style = ParagraphStyle(
         'CustomTitle',
         parent=styles['Heading1'],
-        fontSize=16,
-        textColor=colors.HexColor('#4CAF50'),
+        fontSize=18,
+        textColor=DARK_GREEN,
         alignment=TA_CENTER,
-        spaceAfter=10
+        spaceAfter=4,
+        fontName='Helvetica-Bold'
     )
     
-    header_style = ParagraphStyle(
-        'CustomHeader',
+    subtitle_style = ParagraphStyle(
+        'Subtitle',
+        parent=styles['Normal'],
+        fontSize=10,
+        alignment=TA_CENTER,
+        textColor=GRAY,
+        spaceAfter=15
+    )
+    
+    section_style = ParagraphStyle(
+        'SectionHeader',
         parent=styles['Heading2'],
         fontSize=12,
-        textColor=colors.HexColor('#333333'),
-        spaceBefore=15,
+        textColor=WHITE,
+        spaceBefore=12,
         spaceAfter=8,
-        backColor=colors.HexColor('#e8f5e9'),
-        borderPadding=5
+        backColor=GREEN,
+        borderPadding=(6, 8, 6, 8),
+        fontName='Helvetica-Bold',
+        leading=16
     )
     
     normal_style = ParagraphStyle(
         'CustomNormal',
         parent=styles['Normal'],
         fontSize=9,
-        leading=12
+        leading=13,
+        textColor=colors.HexColor('#333333')
     )
     
-    # Add logo
-    logo_path = ROOT_DIR / 'assets' / 'logo.png'
-    if logo_path.exists():
-        try:
-            img = Image(str(logo_path), width=2*inch, height=0.8*inch)
-            img.hAlign = 'CENTER'
-            story.append(img)
-            story.append(Spacer(1, 10))
-        except Exception as e:
-            logger.error(f"Error loading logo: {e}")
+    small_style = ParagraphStyle(
+        'SmallText',
+        parent=styles['Normal'],
+        fontSize=7,
+        leading=10,
+        textColor=GRAY
+    )
     
-    # Title
+    # ---- Title ----
     story.append(Paragraph("Site Visit Checklist / Safety Plan", title_style))
-    story.append(Paragraph(settings.company_name, ParagraphStyle('Company', parent=styles['Normal'], fontSize=10, alignment=TA_CENTER, textColor=colors.gray)))
-    story.append(Spacer(1, 15))
+    story.append(Paragraph(f"{report.job_no_name}  —  {report.date}", subtitle_style))
     
-    # Site Information Table
-    story.append(Paragraph("Site Information", header_style))
+    # ---- Site Information ----
+    story.append(Paragraph("Site Information", section_style))
+    story.append(Spacer(1, 4))
+    
     site_data = [
-        ["Staff Member(s):", report.staff_members, "Date:", report.date],
-        ["Job No. / Name:", report.job_no_name, "Weather:", report.weather_conditions],
-        ["Arrival Time:", report.site_arrival_time, "Departure Time:", report.site_departure_time],
-        ["Contractor:", report.contractor_responsible, "", ""],
+        [Paragraph("<b>Staff Member(s)</b>", small_style), Paragraph(report.staff_members, normal_style),
+         Paragraph("<b>Date</b>", small_style), Paragraph(report.date, normal_style)],
+        [Paragraph("<b>Job No. / Name</b>", small_style), Paragraph(report.job_no_name, normal_style),
+         Paragraph("<b>Weather</b>", small_style), Paragraph(report.weather_conditions, normal_style)],
+        [Paragraph("<b>Arrival Time</b>", small_style), Paragraph(report.site_arrival_time, normal_style),
+         Paragraph("<b>Departure Time</b>", small_style), Paragraph(report.site_departure_time, normal_style)],
+        [Paragraph("<b>Contractor</b>", small_style), Paragraph(report.contractor_responsible, normal_style),
+         "", ""],
     ]
-    site_table = Table(site_data, colWidths=[80, 140, 80, 140])
+    site_table = Table(site_data, colWidths=[75, 145, 75, 145])
     site_table.setStyle(TableStyle([
         ('FONTSIZE', (0, 0), (-1, -1), 8),
-        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-        ('FONTNAME', (2, 0), (2, -1), 'Helvetica-Bold'),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.gray),
-        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#f5f5f5')),
-        ('BACKGROUND', (2, 0), (2, -1), colors.HexColor('#f5f5f5')),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
+        ('BACKGROUND', (0, 0), (0, -1), LIGHT_GREEN),
+        ('BACKGROUND', (2, 0), (2, -1), LIGHT_GREEN),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('PADDING', (0, 0), (-1, -1), 5),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('ROUNDEDCORNERS', [4, 4, 4, 4]),
     ]))
     story.append(site_table)
-    story.append(Spacer(1, 5))
     
-    # Site Description
-    story.append(Paragraph(f"<b>Site Description:</b> {report.site_description}", normal_style))
-    story.append(Spacer(1, 10))
+    # Site Description box
+    if report.site_description:
+        story.append(Spacer(1, 6))
+        desc_data = [[Paragraph("<b>Site Description</b>", small_style)], [Paragraph(report.site_description, normal_style)]]
+        desc_table = Table(desc_data, colWidths=[440])
+        desc_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), LIGHT_GREEN),
+            ('BACKGROUND', (0, 1), (-1, 1), WHITE),
+            ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),
+        ]))
+        story.append(desc_table)
     
-    # Risk/Hazard Section
-    story.append(Paragraph("Risk / Hazard / Incident Reporting", header_style))
-    story.append(Paragraph(f"<b>Recorded Issues:</b> {report.risks_hazards_incidents or 'None reported'}", normal_style))
+    # ---- Risk / Hazard Section ----
+    story.append(Spacer(1, 4))
+    story.append(Paragraph("Risk / Hazard / Incident Reporting", section_style))
+    story.append(Spacer(1, 4))
+    
+    hazard_text = report.risks_hazards_incidents or 'None reported'
     toolbox_text = "Yes" if report.toolbox_talk_required else "No"
     if report.toolbox_talk_notes:
-        toolbox_text += f" - {report.toolbox_talk_notes}"
-    story.append(Paragraph(f"<b>Toolbox Talk/Follow-up Required:</b> {toolbox_text}", normal_style))
-    story.append(Spacer(1, 10))
+        toolbox_text += f" — {report.toolbox_talk_notes}"
     
-    # Safety Checklist
-    story.append(Paragraph("General Site Safety Checklist", header_style))
+    hazard_data = [
+        [Paragraph("<b>Recorded Issues</b>", small_style), Paragraph(hazard_text, normal_style)],
+        [Paragraph("<b>Toolbox Talk Required</b>", small_style), Paragraph(toolbox_text, normal_style)],
+    ]
+    hazard_table = Table(hazard_data, colWidths=[120, 320])
+    hazard_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#FFF3E0')),
+        ('BOX', (0, 0), (-1, -1), 0.5, ORANGE),
+        ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#FFE0B2')),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    story.append(hazard_table)
+    
+    # ---- Safety Checklist ----
+    story.append(Spacer(1, 4))
+    story.append(Paragraph("General Site Safety Checklist", section_style))
+    story.append(Spacer(1, 4))
+    
     if report.checklist_comments:
-        story.append(Paragraph(f"<b>Comments:</b> {report.checklist_comments}", normal_style))
-        story.append(Spacer(1, 5))
+        story.append(Paragraph(f"<b>General Comments:</b> {report.checklist_comments}", normal_style))
+        story.append(Spacer(1, 6))
     
-    checklist_data = [["Question", "Response", "Notes"]]
+    checklist_header = [
+        Paragraph("<b>Question</b>", ParagraphStyle('CH', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold')),
+        Paragraph("<b>Response</b>", ParagraphStyle('CH2', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold', alignment=TA_CENTER)),
+        Paragraph("<b>Notes</b>", ParagraphStyle('CH3', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold'))
+    ]
+    checklist_data = [checklist_header]
     for item in report.safety_checklist:
         answer_display = item.answer.upper() if item.answer else "-"
-        checklist_data.append([item.question, answer_display, item.notes or ""])
+        # Color-code the answer
+        if item.answer == 'yes':
+            ans_color = DARK_GREEN
+        elif item.answer == 'no':
+            ans_color = RED
+        else:
+            ans_color = ORANGE
+        
+        answer_para = Paragraph(
+            f"<b>{answer_display}</b>",
+            ParagraphStyle('Ans', parent=small_style, textColor=ans_color, alignment=TA_CENTER, fontSize=8, fontName='Helvetica-Bold')
+        )
+        
+        checklist_data.append([
+            Paragraph(item.question, ParagraphStyle('Q', parent=normal_style, fontSize=8)),
+            answer_para,
+            Paragraph(item.notes or "", ParagraphStyle('N', parent=small_style, fontSize=7, textColor=colors.HexColor('#555555')))
+        ])
     
-    checklist_table = Table(checklist_data, colWidths=[250, 50, 140])
+    checklist_table = Table(checklist_data, colWidths=[230, 50, 160])
     checklist_table.setStyle(TableStyle([
         ('FONTSIZE', (0, 0), (-1, -1), 7),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4CAF50')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.gray),
+        ('BACKGROUND', (0, 0), (-1, 0), DARK_GREEN),
+        ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
+        ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#c8e6c9')),
+        ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('PADDING', (0, 0), (-1, -1), 4),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9f9f9')]),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, colors.HexColor('#f8fdf8')]),
     ]))
     story.append(checklist_table)
     
     if report.electrical_equipment_list:
-        story.append(Spacer(1, 5))
+        story.append(Spacer(1, 6))
         story.append(Paragraph(f"<b>Electrical Equipment Used:</b> {report.electrical_equipment_list}", normal_style))
     
-    story.append(Spacer(1, 15))
+    # ---- Declaration ----
+    story.append(Spacer(1, 8))
+    story.append(Paragraph("Declaration", section_style))
+    story.append(Spacer(1, 4))
     
-    # Declaration Section
-    story.append(Paragraph("Declaration", header_style))
     declaration_text = "I acknowledge that I, the undersigned, understand the points above. I accept that compliance to safe work practices is a condition of my continued access to the site and also a requirement under the HSW legislation."
-    story.append(Paragraph(declaration_text, ParagraphStyle('Declaration', parent=normal_style, fontSize=8, textColor=colors.gray)))
-    story.append(Spacer(1, 10))
+    decl_box_data = [[Paragraph(declaration_text, ParagraphStyle('Decl', parent=normal_style, fontSize=8, textColor=GRAY, fontName='Helvetica-Oblique'))]]
+    decl_box = Table(decl_box_data, colWidths=[440])
+    decl_box.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), LIGHT_GREEN),
+        ('BOX', (0, 0), (-1, -1), 1, GREEN),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+    ]))
+    story.append(decl_box)
+    story.append(Spacer(1, 8))
     
-    # Signature
+    # Signature table
     decl_data = [
-        ["Staff Member (Print):", report.staff_print_name, "Date:", report.declaration_date],
+        [Paragraph("<b>Staff Member (Print)</b>", small_style), Paragraph(report.staff_print_name, normal_style),
+         Paragraph("<b>Date</b>", small_style), Paragraph(report.declaration_date, normal_style)],
     ]
     decl_table = Table(decl_data, colWidths=[100, 160, 40, 140])
     decl_table.setStyle(TableStyle([
         ('FONTSIZE', (0, 0), (-1, -1), 8),
-        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-        ('FONTNAME', (2, 0), (2, -1), 'Helvetica-Bold'),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.gray),
+        ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
+        ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
+        ('BACKGROUND', (0, 0), (0, 0), LIGHT_GREEN),
+        ('BACKGROUND', (2, 0), (2, 0), LIGHT_GREEN),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('PADDING', (0, 0), (-1, -1), 5),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
     ]))
     story.append(decl_table)
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 8))
     
-    # Add signature image
+    # Signature
     story.append(Paragraph("<b>Signature:</b>", normal_style))
     if report.signature_data:
         try:
             if report.signature_type == "drawn":
-                # Decode base64 signature image
                 sig_data = report.signature_data
                 if "," in sig_data:
                     sig_data = sig_data.split(",")[1]
@@ -339,11 +501,10 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
                 sig_img = Image(sig_buffer, width=2*inch, height=0.6*inch)
                 story.append(sig_img)
             else:
-                # Typed signature - use italic style to simulate handwriting
                 sig_style = ParagraphStyle(
                     'Signature',
                     parent=styles['Normal'],
-                    fontSize=14,
+                    fontSize=16,
                     fontName='Times-Italic',
                     textColor=colors.HexColor('#1a237e')
                 )
@@ -352,10 +513,11 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
             logger.error(f"Error adding signature: {e}")
             story.append(Paragraph(f"[Signature: {report.staff_print_name}]", normal_style))
     
-    # Site Photos Section
+    # ---- Site Photos ----
     if report.site_photos and len(report.site_photos) > 0:
-        story.append(Spacer(1, 20))
-        story.append(Paragraph("Site Photos", header_style))
+        story.append(Spacer(1, 12))
+        story.append(Paragraph(f"Site Photos ({len(report.site_photos)})", section_style))
+        story.append(Spacer(1, 6))
         
         for i, photo in enumerate(report.site_photos):
             try:
@@ -365,51 +527,48 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
                 photo_bytes = base64.b64decode(photo_data)
                 photo_buffer = BytesIO(photo_bytes)
                 
-                # Add photo with reasonable size
-                photo_img = Image(photo_buffer, width=4*inch, height=3*inch)
-                photo_img.hAlign = 'CENTER'
-                story.append(photo_img)
-                
-                # Build caption with metadata
-                caption_parts = []
+                # Photo name from caption
                 photo_name = ""
                 photo_comment = ""
                 if photo.caption:
-                    # Caption format: "JOB-001-1\nComment text"
                     caption_lines = photo.caption.split('\n')
                     photo_name = caption_lines[0]
                     if len(caption_lines) > 1:
                         photo_comment = '\n'.join(caption_lines[1:])
-                
                 if not photo_name:
                     photo_name = f"Photo {i+1}"
                 
-                # Photo name as bold header
+                # Photo name header with green accent
                 name_style = ParagraphStyle(
                     f'PhotoName{i}',
                     parent=styles['Normal'],
                     fontSize=10,
                     fontName='Helvetica-Bold',
-                    alignment=TA_CENTER,
-                    textColor=colors.HexColor('#333333')
+                    textColor=DARK_GREEN,
+                    spaceBefore=6
                 )
-                story.append(Paragraph(photo_name, name_style))
+                story.append(Paragraph(f"📸 {photo_name}", name_style))
                 
-                # Comment if present
+                # Photo image
+                photo_img = Image(photo_buffer, width=4.5*inch, height=3.2*inch)
+                photo_img.hAlign = 'CENTER'
+                story.append(photo_img)
+                
+                # Comment
                 if photo_comment:
                     comment_style = ParagraphStyle(
                         f'PhotoComment{i}',
                         parent=styles['Normal'],
-                        fontSize=8,
+                        fontSize=9,
                         alignment=TA_CENTER,
-                        textColor=colors.HexColor('#555555'),
-                        fontName='Helvetica-Oblique'
+                        textColor=colors.HexColor('#444444'),
+                        fontName='Helvetica-Oblique',
+                        spaceBefore=2
                     )
-                    story.append(Paragraph(photo_comment, comment_style))
+                    story.append(Paragraph(f'"{photo_comment}"', comment_style))
                 
-                # Metadata line (timestamp + location)
+                # Metadata
                 meta_parts = []
-                # Add timestamp
                 if photo.timestamp:
                     try:
                         from datetime import datetime as dt
@@ -418,7 +577,6 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
                     except Exception:
                         meta_parts.append(f"Taken: {photo.timestamp}")
                 
-                # Add location info
                 if photo.address:
                     meta_parts.append(f"Location: {photo.address}")
                 elif photo.latitude and photo.longitude:
@@ -426,21 +584,33 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
                 
                 if meta_parts:
                     meta_text = " | ".join(meta_parts)
-                    caption_style = ParagraphStyle(
+                    meta_style = ParagraphStyle(
                         f'PhotoMeta{i}',
                         parent=styles['Normal'],
                         fontSize=7,
                         alignment=TA_CENTER,
-                        textColor=colors.gray
+                        textColor=GRAY
                     )
-                    story.append(Paragraph(meta_text, caption_style))
-                story.append(Spacer(1, 10))
+                    story.append(Paragraph(meta_text, meta_style))
+                
+                # Separator between photos
+                story.append(Spacer(1, 8))
+                if i < len(report.site_photos) - 1:
+                    sep_data = [[""]]
+                    sep = Table(sep_data, colWidths=[440])
+                    sep.setStyle(TableStyle([
+                        ('LINEBELOW', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
+                        ('TOPPADDING', (0, 0), (-1, -1), 0),
+                        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                    ]))
+                    story.append(sep)
+                    
             except Exception as e:
                 logger.error(f"Error adding photo {i+1}: {e}")
                 story.append(Paragraph(f"[Photo {i+1} could not be loaded]", normal_style))
     
     # Build PDF
-    doc.build(story)
+    doc.build(story, onFirstPage=on_first_page, onLaterPages=on_later_pages)
     buffer.seek(0)
     return buffer.getvalue()
 
