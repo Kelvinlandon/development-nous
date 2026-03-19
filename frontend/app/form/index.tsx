@@ -456,6 +456,18 @@ export default function FormScreen() {
     return caption;
   };
 
+  const getJobPrefix = (): string => {
+    // Extract job number from job_no_name (e.g., "JOB-001 - Test Job" → "JOB-001")
+    const jobNoName = formData.job_no_name;
+    if (!jobNoName) return 'PHOTO';
+    const dashIdx = jobNoName.indexOf(' - ');
+    return dashIdx > 0 ? jobNoName.substring(0, dashIdx).trim() : jobNoName.trim();
+  };
+
+  const getNextPhotoNumber = (): number => {
+    return formData.site_photos.length + 1;
+  };
+
   const takePhoto = async () => {
     const hasPermission = await requestPermissions();
     if (!hasPermission) return;
@@ -474,11 +486,11 @@ export default function FormScreen() {
     if (!result.canceled && result.assets[0].base64) {
       const timestamp = formatTimestamp();
       const { latitude, longitude, address } = await locationPromise;
-      const autoCaption = generatePhotoCaption(timestamp, address, latitude, longitude);
+      const photoName = `${getJobPrefix()}-${getNextPhotoNumber()}`;
       
       const newPhoto: SitePhoto = {
         base64_data: `data:image/jpeg;base64,${result.assets[0].base64}`,
-        caption: autoCaption,
+        caption: photoName,
         timestamp,
         latitude,
         longitude,
@@ -509,11 +521,11 @@ export default function FormScreen() {
     if (!result.canceled && result.assets[0].base64) {
       const timestamp = formatTimestamp();
       const { latitude, longitude, address } = await locationPromise;
-      const autoCaption = generatePhotoCaption(timestamp, address, latitude, longitude);
+      const photoName = `${getJobPrefix()}-${getNextPhotoNumber()}`;
       
       const newPhoto: SitePhoto = {
         base64_data: `data:image/jpeg;base64,${result.assets[0].base64}`,
-        caption: autoCaption,
+        caption: photoName,
         timestamp,
         latitude,
         longitude,
@@ -1005,6 +1017,14 @@ export default function FormScreen() {
               </TouchableOpacity>
             ))}
           </View>
+          <TextInput
+            style={styles.checklistNotes}
+            value={item.notes}
+            onChangeText={(text) => updateChecklistItem(index, 'notes', text)}
+            placeholder="Add notes / comments..."
+            placeholderTextColor="#bbb"
+            multiline
+          />
           {(item.question.includes('electrical') && item.answer === 'yes') && (
             <TextInput
               style={[styles.input, { marginTop: 8 }]}
@@ -1056,13 +1076,33 @@ export default function FormScreen() {
               >
                 <Ionicons name="close-circle" size={24} color="#F44336" />
               </TouchableOpacity>
+              <View style={styles.photoNameBadge}>
+                <Text style={styles.photoNameText}>{photo.caption?.split('\n')[0] || `${getJobPrefix()}-${index + 1}`}</Text>
+              </View>
               <View style={styles.captionContainer}>
+                <Text style={styles.photoLabel}>Photo Name</Text>
                 <TextInput
-                  style={styles.captionInput}
-                  value={photo.caption}
-                  onChangeText={(text) => updatePhotoCaption(index, text)}
-                  placeholder={`Caption for photo ${index + 1}`}
+                  style={styles.photoNameInput}
+                  value={photo.caption?.split('\n')[0] || ''}
+                  onChangeText={(text) => {
+                    const comment = photo.caption?.includes('\n') ? photo.caption.split('\n').slice(1).join('\n') : '';
+                    updatePhotoCaption(index, comment ? `${text}\n${comment}` : text);
+                  }}
+                  placeholder={`${getJobPrefix()}-${index + 1}`}
                   placeholderTextColor="#999"
+                />
+                <Text style={styles.photoLabel}>Comment</Text>
+                <TextInput
+                  style={styles.photoCommentInput}
+                  value={photo.caption?.includes('\n') ? photo.caption.split('\n').slice(1).join('\n') : ''}
+                  onChangeText={(text) => {
+                    const name = photo.caption?.split('\n')[0] || `${getJobPrefix()}-${index + 1}`;
+                    updatePhotoCaption(index, text ? `${name}\n${text}` : name);
+                  }}
+                  placeholder="Add comment about this photo..."
+                  placeholderTextColor="#bbb"
+                  multiline
+                  numberOfLines={3}
                 />
               </View>
             </View>
@@ -1658,6 +1698,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
+  checklistNotes: {
+    fontSize: 13,
+    color: '#333',
+    padding: 8,
+    backgroundColor: '#f9f9f9',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#eee',
+    marginTop: 8,
+    minHeight: 36,
+  },
   optionButton: {
     paddingHorizontal: 16,
     paddingVertical: 6,
@@ -1737,6 +1788,48 @@ const styles = StyleSheet.create({
   },
   captionContainer: {
     padding: 12,
+  },
+  photoLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 4,
+    marginTop: 6,
+  },
+  photoNameInput: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '600',
+    padding: 8,
+    backgroundColor: '#e8f5e9',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#4CAF50',
+  },
+  photoCommentInput: {
+    fontSize: 13,
+    color: '#333',
+    padding: 8,
+    backgroundColor: '#f9f9f9',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    minHeight: 60,
+    textAlignVertical: 'top',
+  },
+  photoNameBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: 'rgba(76,175,80,0.9)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  photoNameText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
   },
   captionInput: {
     fontSize: 14,

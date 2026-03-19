@@ -260,6 +260,9 @@ export default function ReportDetailScreen() {
                   {item.answer?.toUpperCase() || '-'}
                 </Text>
               </View>
+              {item.notes ? (
+                <Text style={styles.checklistNotes}>{item.notes}</Text>
+              ) : null}
             </View>
           ))}
           {report.electrical_equipment_list && (
@@ -530,11 +533,22 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+    flexWrap: 'wrap',
   },
   checklistQuestion: {
     flex: 1,
     fontSize: 12,
     color: '#333',
+  },
+  checklistNotes: {
+    width: '100%',
+    fontSize: 11,
+    color: '#666',
+    fontStyle: 'italic',
+    backgroundColor: '#f9f9f9',
+    padding: 6,
+    borderRadius: 4,
+    marginTop: 4,
   },
   checklistAnswer: {
     paddingHorizontal: 10,

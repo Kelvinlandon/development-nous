@@ -372,34 +372,68 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
                 
                 # Build caption with metadata
                 caption_parts = []
+                photo_name = ""
+                photo_comment = ""
                 if photo.caption:
-                    caption_parts.append(photo.caption)
+                    # Caption format: "JOB-001-1\nComment text"
+                    caption_lines = photo.caption.split('\n')
+                    photo_name = caption_lines[0]
+                    if len(caption_lines) > 1:
+                        photo_comment = '\n'.join(caption_lines[1:])
                 
+                if not photo_name:
+                    photo_name = f"Photo {i+1}"
+                
+                # Photo name as bold header
+                name_style = ParagraphStyle(
+                    f'PhotoName{i}',
+                    parent=styles['Normal'],
+                    fontSize=10,
+                    fontName='Helvetica-Bold',
+                    alignment=TA_CENTER,
+                    textColor=colors.HexColor('#333333')
+                )
+                story.append(Paragraph(photo_name, name_style))
+                
+                # Comment if present
+                if photo_comment:
+                    comment_style = ParagraphStyle(
+                        f'PhotoComment{i}',
+                        parent=styles['Normal'],
+                        fontSize=8,
+                        alignment=TA_CENTER,
+                        textColor=colors.HexColor('#555555'),
+                        fontName='Helvetica-Oblique'
+                    )
+                    story.append(Paragraph(photo_comment, comment_style))
+                
+                # Metadata line (timestamp + location)
+                meta_parts = []
                 # Add timestamp
                 if photo.timestamp:
                     try:
                         from datetime import datetime as dt
                         ts = dt.fromisoformat(photo.timestamp.replace('Z', '+00:00'))
-                        caption_parts.append(f"Taken: {ts.strftime('%Y-%m-%d %H:%M')}")
+                        meta_parts.append(f"Taken: {ts.strftime('%Y-%m-%d %H:%M')}")
                     except Exception:
-                        caption_parts.append(f"Taken: {photo.timestamp}")
+                        meta_parts.append(f"Taken: {photo.timestamp}")
                 
                 # Add location info
                 if photo.address:
-                    caption_parts.append(f"Location: {photo.address}")
+                    meta_parts.append(f"Location: {photo.address}")
                 elif photo.latitude and photo.longitude:
-                    caption_parts.append(f"GPS: {photo.latitude:.6f}, {photo.longitude:.6f}")
+                    meta_parts.append(f"GPS: {photo.latitude:.6f}, {photo.longitude:.6f}")
                 
-                caption_text = " | ".join(caption_parts) if caption_parts else f"Photo {i+1}"
-                
-                caption_style = ParagraphStyle(
-                    'PhotoCaption',
-                    parent=styles['Normal'],
-                    fontSize=8,
-                    alignment=TA_CENTER,
-                    textColor=colors.gray
-                )
-                story.append(Paragraph(caption_text, caption_style))
+                if meta_parts:
+                    meta_text = " | ".join(meta_parts)
+                    caption_style = ParagraphStyle(
+                        f'PhotoMeta{i}',
+                        parent=styles['Normal'],
+                        fontSize=7,
+                        alignment=TA_CENTER,
+                        textColor=colors.gray
+                    )
+                    story.append(Paragraph(meta_text, caption_style))
                 story.append(Spacer(1, 10))
             except Exception as e:
                 logger.error(f"Error adding photo {i+1}: {e}")
