@@ -20,7 +20,7 @@ from email.mime.application import MIMEApplication
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, KeepTogether
 from reportlab.lib.units import inch, mm
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
@@ -449,10 +449,11 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
         story.append(Spacer(1, 6))
         story.append(Paragraph(f"<b>Electrical Equipment Used:</b> {report.electrical_equipment_list}", normal_style))
     
-    # ---- Declaration ----
-    story.append(Spacer(1, 8))
-    story.append(Paragraph("Declaration", section_style))
-    story.append(Spacer(1, 4))
+    # ---- Declaration (keep together on one page) ----
+    declaration_elements = []
+    declaration_elements.append(Spacer(1, 8))
+    declaration_elements.append(Paragraph("Declaration", section_style))
+    declaration_elements.append(Spacer(1, 4))
     
     declaration_text = "I acknowledge that I, the undersigned, understand the points above. I accept that compliance to safe work practices is a condition of my continued access to the site and also a requirement under the HSW legislation."
     decl_box_data = [[Paragraph(declaration_text, ParagraphStyle('Decl', parent=normal_style, fontSize=8, textColor=GRAY, fontName='Helvetica-Oblique'))]]
@@ -465,8 +466,8 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
         ('LEFTPADDING', (0, 0), (-1, -1), 10),
         ('RIGHTPADDING', (0, 0), (-1, -1), 10),
     ]))
-    story.append(decl_box)
-    story.append(Spacer(1, 8))
+    declaration_elements.append(decl_box)
+    declaration_elements.append(Spacer(1, 8))
     
     # Signature table
     decl_data = [
@@ -485,11 +486,11 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
         ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
         ('LEFTPADDING', (0, 0), (-1, -1), 6),
     ]))
-    story.append(decl_table)
-    story.append(Spacer(1, 8))
+    declaration_elements.append(decl_table)
+    declaration_elements.append(Spacer(1, 8))
     
     # Signature
-    story.append(Paragraph("<b>Signature:</b>", normal_style))
+    declaration_elements.append(Paragraph("<b>Signature:</b>", normal_style))
     if report.signature_data:
         try:
             if report.signature_type == "drawn":
@@ -499,7 +500,7 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
                 sig_bytes = base64.b64decode(sig_data)
                 sig_buffer = BytesIO(sig_bytes)
                 sig_img = Image(sig_buffer, width=2*inch, height=0.6*inch)
-                story.append(sig_img)
+                declaration_elements.append(sig_img)
             else:
                 sig_style = ParagraphStyle(
                     'Signature',
@@ -508,10 +509,13 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
                     fontName='Times-Italic',
                     textColor=colors.HexColor('#1a237e')
                 )
-                story.append(Paragraph(report.signature_data, sig_style))
+                declaration_elements.append(Paragraph(report.signature_data, sig_style))
         except Exception as e:
             logger.error(f"Error adding signature: {e}")
-            story.append(Paragraph(f"[Signature: {report.staff_print_name}]", normal_style))
+            declaration_elements.append(Paragraph(f"[Signature: {report.staff_print_name}]", normal_style))
+    
+    # Wrap entire declaration in KeepTogether
+    story.append(KeepTogether(declaration_elements))
     
     # ---- Site Photos ----
     if report.site_photos and len(report.site_photos) > 0:
