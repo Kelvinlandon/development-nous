@@ -281,40 +281,40 @@ export default function SettingsScreen() {
             </View>
             
             <Text style={styles.syncDescription}>
-              Sync staff and jobs from external CSV files. Use Google Sheets published as CSV, or any hosted CSV file.
+              Sync staff and jobs from a Google Sheets spreadsheet. Just paste the share link — no special export needed.
             </Text>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Staff CSV URL</Text>
+              <Text style={styles.label}>Staff Spreadsheet URL</Text>
               <TextInput
                 style={styles.input}
                 value={settings.staff_csv_url}
                 onChangeText={(text) =>
                   setSettings({ ...settings, staff_csv_url: text })
                 }
-                placeholder="https://docs.google.com/spreadsheets/.../pub?output=csv"
+                placeholder="https://docs.google.com/spreadsheets/d/..."
                 autoCapitalize="none"
                 autoCorrect={false}
               />
               <Text style={styles.hint}>
-                CSV should have a "Name" or "Staff" column
+                First column should contain staff names
               </Text>
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Jobs CSV URL</Text>
+              <Text style={styles.label}>Jobs Spreadsheet URL</Text>
               <TextInput
                 style={styles.input}
                 value={settings.jobs_csv_url}
                 onChangeText={(text) =>
                   setSettings({ ...settings, jobs_csv_url: text })
                 }
-                placeholder="https://docs.google.com/spreadsheets/.../pub?output=csv"
+                placeholder="https://docs.google.com/spreadsheets/d/..."
                 autoCapitalize="none"
                 autoCorrect={false}
               />
               <Text style={styles.hint}>
-                CSV should have "Job Number" and "Job Name" columns
+                Column A = Job Number, Column B = Job Name
               </Text>
             </View>
 
@@ -339,11 +339,18 @@ export default function SettingsScreen() {
             <Ionicons name="information-circle" size={20} color="#1976D2" />
             <View style={{ flex: 1 }}>
               <Text style={styles.infoText}>
-                <Text style={{ fontWeight: '600' }}>Google Sheets Setup:{'\n'}</Text>
-                1. Create a spreadsheet with staff/jobs{'\n'}
-                2. File → Share → Publish to web{'\n'}
-                3. Select "Comma-separated values (.csv)"{'\n'}
-                4. Copy the link and paste above
+                <Text style={{ fontWeight: '700' }}>Google Sheets Setup:{'\n\n'}</Text>
+                <Text style={{ fontWeight: '600' }}>Staff spreadsheet:{'\n'}</Text>
+                {'  '}Column A header: "Name"{'\n'}
+                {'  '}Then list each person's name in the rows below{'\n\n'}
+                <Text style={{ fontWeight: '600' }}>Jobs spreadsheet:{'\n'}</Text>
+                {'  '}Column A header: "Job Number"{'\n'}
+                {'  '}Column B header: "Job Name"{'\n'}
+                {'  '}Then list each job in the rows below{'\n\n'}
+                <Text style={{ fontWeight: '600' }}>IMPORTANT:{'\n'}</Text>
+                {'  '}1. Click Share → "Anyone with the link" → Viewer{'\n'}
+                {'  '}2. Copy the link and paste it above{'\n'}
+                {'  '}3. Hit Save Settings, then Sync Now
               </Text>
             </View>
           </View>

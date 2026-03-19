@@ -194,8 +194,8 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
     ORANGE = colors.HexColor('#FF9800')
     RED = colors.HexColor('#F44336')
     
-    # Safe print margins (15mm = ~42pts)
-    MARGIN = 42
+    # Print margins (8mm = ~23pts)
+    MARGIN = 23
     
     def on_first_page(canvas, doc):
         """Draw a print-friendly header with logo and Harry on the first page"""
@@ -709,29 +709,68 @@ async def sync_from_csv():
     jobs_count = 0
     errors = []
     
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    def convert_google_sheets_url(url: str) -> str:
+        """Convert various Google Sheets URL formats to CSV export URL"""
+        import re
+        url = url.strip()
+        
+        # Already a CSV export URL
+        if 'export?format=csv' in url or 'output=csv' in url:
+            return url
+        
+        # Extract sheet ID from various Google Sheets URL formats
+        # Format: https://docs.google.com/spreadsheets/d/{ID}/...
+        match = re.search(r'/spreadsheets/d/([a-zA-Z0-9_-]+)', url)
+        if match:
+            sheet_id = match.group(1)
+            # Check for gid parameter
+            gid_match = re.search(r'gid=(\d+)', url)
+            gid = gid_match.group(1) if gid_match else '0'
+            return f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid}"
+        
+        # Not a Google Sheets URL, return as-is
+        return url
+    
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as http_client:
         # Sync Staff from CSV
         if settings.get('staff_csv_url'):
             try:
-                response = await client.get(settings['staff_csv_url'])
+                csv_url = convert_google_sheets_url(settings['staff_csv_url'])
+                logger.info(f"Syncing staff from: {csv_url}")
+                
+                response = await http_client.get(csv_url)
                 response.raise_for_status()
                 
                 # Parse CSV
                 content = response.text
+                logger.info(f"Staff CSV content (first 200 chars): {content[:200]}")
+                
                 reader = csv.DictReader(content.splitlines())
                 
                 # Clear existing staff and add new ones
                 await db.staff.delete_many({})
                 
                 for row in reader:
-                    # Support columns: name, Name, staff_name, Staff Name
-                    name = row.get('name') or row.get('Name') or row.get('staff_name') or row.get('Staff Name') or row.get('Staff')
+                    # Support many column name variations
+                    name = (row.get('name') or row.get('Name') or row.get('staff_name') or 
+                            row.get('Staff Name') or row.get('Staff') or row.get('staff') or
+                            row.get('Employee') or row.get('employee') or row.get('Full Name') or
+                            row.get('full_name') or '')
+                    # If no known column, try the first column
+                    if not name.strip() and row:
+                        first_val = list(row.values())[0]
+                        if first_val and first_val.strip():
+                            name = first_val
+                    
                     if name and name.strip():
                         staff_obj = StaffMember(name=name.strip())
                         await db.staff.insert_one(staff_obj.model_dump())
                         staff_count += 1
                         
                 logger.info(f"Synced {staff_count} staff members from CSV")
+            except httpx.HTTPStatusError as e:
+                logger.error(f"HTTP error syncing staff CSV: {e.response.status_code}")
+                errors.append(f"Staff sync failed: HTTP {e.response.status_code}. Make sure the spreadsheet is shared as 'Anyone with the link'")
             except Exception as e:
                 logger.error(f"Error syncing staff CSV: {e}")
                 errors.append(f"Staff sync failed: {str(e)}")
@@ -739,21 +778,38 @@ async def sync_from_csv():
         # Sync Jobs from CSV
         if settings.get('jobs_csv_url'):
             try:
-                response = await client.get(settings['jobs_csv_url'])
+                csv_url = convert_google_sheets_url(settings['jobs_csv_url'])
+                logger.info(f"Syncing jobs from: {csv_url}")
+                
+                response = await http_client.get(csv_url)
                 response.raise_for_status()
                 
                 # Parse CSV
                 content = response.text
+                logger.info(f"Jobs CSV content (first 200 chars): {content[:200]}")
+                
                 reader = csv.DictReader(content.splitlines())
                 
                 # Clear existing jobs and add new ones
                 await db.jobs.delete_many({})
                 
                 for row in reader:
-                    # Support columns: job_number, Job Number, number, Number
-                    job_number = row.get('job_number') or row.get('Job Number') or row.get('number') or row.get('Number') or row.get('Job No')
-                    # Support columns: job_name, Job Name, name, Name, description
-                    job_name = row.get('job_name') or row.get('Job Name') or row.get('name') or row.get('Name') or row.get('Description')
+                    # Support many column name variations
+                    job_number = (row.get('job_number') or row.get('Job Number') or row.get('number') or 
+                                  row.get('Number') or row.get('Job No') or row.get('Job no') or
+                                  row.get('job_no') or row.get('Job') or row.get('job') or
+                                  row.get('ID') or row.get('id') or '')
+                    job_name = (row.get('job_name') or row.get('Job Name') or row.get('name') or 
+                                row.get('Name') or row.get('Description') or row.get('description') or
+                                row.get('Project') or row.get('project') or row.get('Title') or '')
+                    
+                    # If no known columns, try first two columns
+                    if not job_number.strip() and row:
+                        vals = list(row.values())
+                        if len(vals) >= 1 and vals[0] and vals[0].strip():
+                            job_number = vals[0]
+                        if len(vals) >= 2 and vals[1] and vals[1].strip():
+                            job_name = vals[1]
                     
                     if job_number and job_number.strip():
                         job_obj = Job(
@@ -764,6 +820,9 @@ async def sync_from_csv():
                         jobs_count += 1
                         
                 logger.info(f"Synced {jobs_count} jobs from CSV")
+            except httpx.HTTPStatusError as e:
+                logger.error(f"HTTP error syncing jobs CSV: {e.response.status_code}")
+                errors.append(f"Jobs sync failed: HTTP {e.response.status_code}. Make sure the spreadsheet is shared as 'Anyone with the link'")
             except Exception as e:
                 logger.error(f"Error syncing jobs CSV: {e}")
                 errors.append(f"Jobs sync failed: {str(e)}")
