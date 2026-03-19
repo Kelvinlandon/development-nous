@@ -81,12 +81,31 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.container} edges={['bottom']}>
       {/* Logo Header */}
       <View style={styles.logoContainer}>
-        <Image
-          source={{ uri: 'https://customer-assets.emergentagent.com/job_form-emailer-3/artifacts/7zxptafs_DNL_Logo_Secondary.png' }}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-        <Text style={styles.companyName}>Development Nous Limited</Text>
+        <View style={styles.headerRow}>
+          {/* App Icon on Left */}
+          <Image
+            source={{ uri: 'https://customer-assets.emergentagent.com/job_form-emailer-3/artifacts/ndpaetfg_harry%20ute%20icon.png' }}
+            style={styles.appIcon}
+            resizeMode="contain"
+          />
+          
+          {/* Center Logo */}
+          <View style={styles.centerLogo}>
+            <Image
+              source={{ uri: 'https://customer-assets.emergentagent.com/job_form-emailer-3/artifacts/7zxptafs_DNL_Logo_Secondary.png' }}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+            <Text style={styles.companyName}>Development Nous Limited</Text>
+          </View>
+          
+          {/* Office Dog on Right */}
+          <Image
+            source={{ uri: 'https://customer-assets.emergentagent.com/job_form-emailer-3/artifacts/zb41p2id_Designer%20%285%29.png' }}
+            style={styles.dogIcon}
+            resizeMode="contain"
+          />
+        </View>
       </View>
 
       {/* Action Buttons */}
@@ -144,18 +163,37 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   logoContainer: {
-    alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     backgroundColor: '#1a1a1a',
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  appIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 10,
+  },
+  centerLogo: {
+    flex: 1,
+    alignItems: 'center',
+  },
   logo: {
-    width: 150,
-    height: 50,
+    width: 130,
+    height: 45,
+  },
+  dogIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 10,
   },
   companyName: {
     color: '#4CAF50',
-    fontSize: 12,
-    marginTop: 4,
+    fontSize: 11,
+    marginTop: 2,
     fontWeight: '500',
   },
   actionButtons: {
