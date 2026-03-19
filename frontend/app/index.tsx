@@ -17,7 +17,7 @@ import Constants from 'expo-constants';
 
 const API_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || 
   process.env.EXPO_PUBLIC_BACKEND_URL || 
-  'https://form-emailer-3.preview.emergentagent.com';
+  'https://safetypaws-reports.preview.emergentagent.com';
 
 interface Report {
   id: string;

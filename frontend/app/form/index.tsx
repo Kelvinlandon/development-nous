@@ -25,7 +25,7 @@ import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/dat
 
 const API_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || 
   process.env.EXPO_PUBLIC_BACKEND_URL || 
-  'https://form-emailer-3.preview.emergentagent.com';
+  'https://safetypaws-reports.preview.emergentagent.com';
 
 const SAFETY_CHECKLIST_QUESTIONS = [
   'Is an Accident/Incident/Hazard Report required?',

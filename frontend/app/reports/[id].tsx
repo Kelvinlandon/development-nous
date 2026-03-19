@@ -22,7 +22,7 @@ import * as Sharing from 'expo-sharing';
 
 const API_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || 
   process.env.EXPO_PUBLIC_BACKEND_URL || 
-  'https://form-emailer-3.preview.emergentagent.com';
+  'https://safetypaws-reports.preview.emergentagent.com';
 
 interface Report {
   id: string;
@@ -90,7 +90,9 @@ export default function ReportDetailScreen() {
   const downloadPDF = async () => {
     setDownloading(true);
     try {
-      const response = await axios.get(`${API_URL}/api/reports/${id}/pdf`);
+      const response = await axios.get(`${API_URL}/api/reports/${id}/pdf`, {
+        timeout: 60000, // 60 second timeout for large PDFs
+      });
       const { pdf_base64, filename } = response.data;
       
       if (Platform.OS === 'web') {
@@ -98,12 +100,19 @@ export default function ReportDetailScreen() {
         const link = document.createElement('a');
         link.href = `data:application/pdf;base64,${pdf_base64}`;
         link.download = filename;
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
+        Alert.alert('Success', 'PDF downloaded successfully');
       } else {
         // For mobile, save and share
+        if (!FileSystem.documentDirectory) {
+          Alert.alert('Error', 'File system not available');
+          return;
+        }
         const fileUri = `${FileSystem.documentDirectory}${filename}`;
         await FileSystem.writeAsStringAsync(fileUri, pdf_base64, {
-          encoding: FileSystem.EncodingType.Base64,
+          encoding: 'base64' as any,
         });
         
         if (await Sharing.isAvailableAsync()) {
@@ -115,9 +124,10 @@ export default function ReportDetailScreen() {
           Alert.alert('Success', 'PDF saved to documents');
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error downloading PDF:', error);
-      Alert.alert('Error', 'Failed to download PDF');
+      const errorMsg = error.response?.data?.detail || error.message || 'Failed to download PDF';
+      Alert.alert('Error', errorMsg);
     } finally {
       setDownloading(false);
     }
