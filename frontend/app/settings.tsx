@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,6 +31,8 @@ interface Settings {
   smtp_use_tls: boolean;
   smtp_enabled: boolean;
   company_name: string;
+  staff_csv_url: string;
+  jobs_csv_url: string;
 }
 
 export default function SettingsScreen() {
@@ -42,9 +45,12 @@ export default function SettingsScreen() {
     smtp_use_tls: true,
     smtp_enabled: false,
     company_name: 'Development Nous Limited',
+    staff_csv_url: '',
+    jobs_csv_url: '',
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
@@ -72,6 +78,36 @@ export default function SettingsScreen() {
       Alert.alert('Error', 'Failed to save settings');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const syncFromCSV = async () => {
+    if (!settings.staff_csv_url && !settings.jobs_csv_url) {
+      Alert.alert('No URLs', 'Please enter at least one CSV URL before syncing');
+      return;
+    }
+    
+    setSyncing(true);
+    try {
+      // First save settings to ensure URLs are stored
+      await axios.put(`${API_URL}/api/settings`, settings);
+      
+      // Then trigger sync
+      const response = await axios.post(`${API_URL}/api/sync`);
+      
+      if (response.data.success) {
+        Alert.alert(
+          'Sync Complete', 
+          `Synced ${response.data.staff_count} staff members and ${response.data.jobs_count} jobs`
+        );
+      } else {
+        Alert.alert('Sync Issue', response.data.message);
+      }
+    } catch (error) {
+      console.error('Error syncing:', error);
+      Alert.alert('Error', 'Failed to sync from CSV');
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -237,7 +273,82 @@ export default function SettingsScreen() {
             </View>
           </View>
 
-          {/* Info Box */}
+          {/* External Data Sync */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="cloud-download" size={22} color="#4CAF50" />
+              <Text style={styles.sectionTitle}>External Data Sync</Text>
+            </View>
+            
+            <Text style={styles.syncDescription}>
+              Sync staff and jobs from external CSV files. Use Google Sheets published as CSV, or any hosted CSV file.
+            </Text>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Staff CSV URL</Text>
+              <TextInput
+                style={styles.input}
+                value={settings.staff_csv_url}
+                onChangeText={(text) =>
+                  setSettings({ ...settings, staff_csv_url: text })
+                }
+                placeholder="https://docs.google.com/spreadsheets/.../pub?output=csv"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <Text style={styles.hint}>
+                CSV should have a "Name" or "Staff" column
+              </Text>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Jobs CSV URL</Text>
+              <TextInput
+                style={styles.input}
+                value={settings.jobs_csv_url}
+                onChangeText={(text) =>
+                  setSettings({ ...settings, jobs_csv_url: text })
+                }
+                placeholder="https://docs.google.com/spreadsheets/.../pub?output=csv"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <Text style={styles.hint}>
+                CSV should have "Job Number" and "Job Name" columns
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.syncButton}
+              onPress={syncFromCSV}
+              disabled={syncing}
+            >
+              {syncing ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="sync" size={20} color="#fff" />
+                  <Text style={styles.syncButtonText}>Sync Now</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Google Sheets Instructions */}
+          <View style={styles.infoBox}>
+            <Ionicons name="information-circle" size={20} color="#1976D2" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.infoText}>
+                <Text style={{ fontWeight: '600' }}>Google Sheets Setup:{'\n'}</Text>
+                1. Create a spreadsheet with staff/jobs{'\n'}
+                2. File → Share → Publish to web{'\n'}
+                3. Select "Comma-separated values (.csv)"{'\n'}
+                4. Copy the link and paste above
+              </Text>
+            </View>
+          </View>
+
+          {/* SMTP Info Box */}
           <View style={styles.infoBox}>
             <Ionicons name="information-circle" size={20} color="#1976D2" />
             <Text style={styles.infoText}>
@@ -388,6 +499,27 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  syncDescription: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  syncButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2196F3',
+    paddingVertical: 12,
+    borderRadius: 8,
+    gap: 8,
+    marginTop: 8,
+  },
+  syncButtonText: {
+    color: '#fff',
+    fontSize: 15,
     fontWeight: '600',
   },
 });

@@ -11,6 +11,8 @@ import uuid
 from datetime import datetime
 import base64
 from io import BytesIO
+import csv
+import httpx
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -144,6 +146,9 @@ class AppSettings(BaseModel):
     smtp_use_tls: bool = True
     smtp_enabled: bool = False  # False = mocked email
     company_name: str = "Development Nous Limited"
+    # External data sync URLs
+    staff_csv_url: str = ""
+    jobs_csv_url: str = ""
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
 class AppSettingsUpdate(BaseModel):
@@ -155,6 +160,8 @@ class AppSettingsUpdate(BaseModel):
     smtp_use_tls: Optional[bool] = None
     smtp_enabled: Optional[bool] = None
     company_name: Optional[str] = None
+    staff_csv_url: Optional[str] = None
+    jobs_csv_url: Optional[str] = None
 
 class EmailRequest(BaseModel):
     report_id: str
@@ -452,6 +459,98 @@ async def delete_job(job_id: str):
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Job not found")
     return {"message": "Job deleted"}
+
+# Sync from external CSV endpoints
+class SyncResponse(BaseModel):
+    success: bool
+    message: str
+    staff_count: int = 0
+    jobs_count: int = 0
+
+@api_router.post("/sync", response_model=SyncResponse)
+async def sync_from_csv():
+    """Sync staff and jobs from external CSV URLs configured in settings"""
+    settings = await db.settings.find_one({"id": "app_settings"})
+    if not settings:
+        settings = AppSettings().model_dump()
+    
+    staff_count = 0
+    jobs_count = 0
+    errors = []
+    
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        # Sync Staff from CSV
+        if settings.get('staff_csv_url'):
+            try:
+                response = await client.get(settings['staff_csv_url'])
+                response.raise_for_status()
+                
+                # Parse CSV
+                content = response.text
+                reader = csv.DictReader(content.splitlines())
+                
+                # Clear existing staff and add new ones
+                await db.staff.delete_many({})
+                
+                for row in reader:
+                    # Support columns: name, Name, staff_name, Staff Name
+                    name = row.get('name') or row.get('Name') or row.get('staff_name') or row.get('Staff Name') or row.get('Staff')
+                    if name and name.strip():
+                        staff_obj = StaffMember(name=name.strip())
+                        await db.staff.insert_one(staff_obj.model_dump())
+                        staff_count += 1
+                        
+                logger.info(f"Synced {staff_count} staff members from CSV")
+            except Exception as e:
+                logger.error(f"Error syncing staff CSV: {e}")
+                errors.append(f"Staff sync failed: {str(e)}")
+        
+        # Sync Jobs from CSV
+        if settings.get('jobs_csv_url'):
+            try:
+                response = await client.get(settings['jobs_csv_url'])
+                response.raise_for_status()
+                
+                # Parse CSV
+                content = response.text
+                reader = csv.DictReader(content.splitlines())
+                
+                # Clear existing jobs and add new ones
+                await db.jobs.delete_many({})
+                
+                for row in reader:
+                    # Support columns: job_number, Job Number, number, Number
+                    job_number = row.get('job_number') or row.get('Job Number') or row.get('number') or row.get('Number') or row.get('Job No')
+                    # Support columns: job_name, Job Name, name, Name, description
+                    job_name = row.get('job_name') or row.get('Job Name') or row.get('name') or row.get('Name') or row.get('Description')
+                    
+                    if job_number and job_number.strip():
+                        job_obj = Job(
+                            job_number=job_number.strip(),
+                            job_name=(job_name or '').strip()
+                        )
+                        await db.jobs.insert_one(job_obj.model_dump())
+                        jobs_count += 1
+                        
+                logger.info(f"Synced {jobs_count} jobs from CSV")
+            except Exception as e:
+                logger.error(f"Error syncing jobs CSV: {e}")
+                errors.append(f"Jobs sync failed: {str(e)}")
+    
+    if errors:
+        return SyncResponse(
+            success=False,
+            message="; ".join(errors),
+            staff_count=staff_count,
+            jobs_count=jobs_count
+        )
+    
+    return SyncResponse(
+        success=True,
+        message=f"Successfully synced {staff_count} staff members and {jobs_count} jobs",
+        staff_count=staff_count,
+        jobs_count=jobs_count
+    )
 
 # Settings endpoints
 @api_router.get("/settings", response_model=AppSettings)
