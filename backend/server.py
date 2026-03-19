@@ -13,6 +13,10 @@ import base64
 from io import BytesIO
 import csv
 import httpx
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.application import MIMEApplication
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -139,7 +143,7 @@ class SiteVisitReportCreate(BaseModel):
 class AppSettings(BaseModel):
     id: str = "app_settings"
     default_recipient_email: str = "kelvin.landon@developmentnous.nz"
-    smtp_host: str = ""
+    smtp_host: str = "smtp.gmail.com"
     smtp_port: int = 587
     smtp_username: str = ""
     smtp_password: str = ""
@@ -377,7 +381,7 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
                         from datetime import datetime as dt
                         ts = dt.fromisoformat(photo.timestamp.replace('Z', '+00:00'))
                         caption_parts.append(f"Taken: {ts.strftime('%Y-%m-%d %H:%M')}")
-                    except:
+                    except Exception:
                         caption_parts.append(f"Taken: {photo.timestamp}")
                 
                 # Add location info
@@ -643,7 +647,145 @@ async def get_report_pdf(report_id: str):
         "filename": f"site_visit_{report_obj.job_no_name}_{report_obj.date}.pdf"
     }
 
-# Email endpoint (mocked for now)
+# ================== Email Sending ==================
+
+def send_smtp_email(
+    smtp_host: str,
+    smtp_port: int,
+    smtp_username: str,
+    smtp_password: str,
+    smtp_use_tls: bool,
+    recipient: str,
+    subject: str,
+    html_body: str,
+    pdf_bytes: bytes,
+    pdf_filename: str,
+) -> None:
+    """Send an email with PDF attachment via SMTP (Gmail compatible)"""
+    msg = MIMEMultipart('mixed')
+    msg['From'] = smtp_username
+    msg['To'] = recipient
+    msg['Subject'] = subject
+
+    # Attach HTML body
+    html_part = MIMEText(html_body, 'html')
+    msg.attach(html_part)
+
+    # Attach PDF
+    pdf_part = MIMEApplication(pdf_bytes, _subtype='pdf')
+    pdf_part.add_header('Content-Disposition', 'attachment', filename=pdf_filename)
+    msg.attach(pdf_part)
+
+    # Send via SMTP
+    if smtp_use_tls:
+        server = smtplib.SMTP(smtp_host, smtp_port, timeout=30)
+        server.ehlo()
+        server.starttls()
+        server.ehlo()
+    else:
+        server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=30)
+    
+    server.login(smtp_username, smtp_password)
+    server.sendmail(smtp_username, recipient, msg.as_string())
+    server.quit()
+
+
+def build_email_html(report: SiteVisitReport, settings: AppSettings) -> str:
+    """Build a nice HTML email body with report summary"""
+    checklist_rows = ""
+    for item in report.safety_checklist:
+        answer = item.answer.upper() if item.answer else "-"
+        color = "#4CAF50" if item.answer == "yes" else "#F44336" if item.answer == "no" else "#FF9800"
+        checklist_rows += f"""
+        <tr>
+            <td style="padding:6px 10px;border-bottom:1px solid #eee;font-size:13px;">{item.question}</td>
+            <td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:center;">
+                <span style="background:{color};color:#fff;padding:2px 10px;border-radius:10px;font-size:11px;font-weight:600;">{answer}</span>
+            </td>
+        </tr>"""
+
+    photo_count = len(report.site_photos) if report.site_photos else 0
+    toolbox = "Yes" if report.toolbox_talk_required else "No"
+    if report.toolbox_talk_notes:
+        toolbox += f" — {report.toolbox_talk_notes}"
+
+    html = f"""
+    <div style="font-family:Arial,Helvetica,sans-serif;max-width:600px;margin:0 auto;color:#333;">
+        <div style="background:#4CAF50;padding:20px;text-align:center;border-radius:8px 8px 0 0;">
+            <h1 style="color:#fff;margin:0;font-size:22px;">Site Visit Report</h1>
+            <p style="color:#e8f5e9;margin:6px 0 0;font-size:13px;">{settings.company_name}</p>
+        </div>
+        
+        <div style="background:#fff;padding:20px;border:1px solid #e0e0e0;">
+            <h2 style="color:#4CAF50;font-size:16px;margin:0 0 15px;border-bottom:2px solid #4CAF50;padding-bottom:8px;">
+                {report.job_no_name}
+            </h2>
+            
+            <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
+                <tr>
+                    <td style="padding:6px 0;color:#666;font-size:13px;width:140px;"><strong>Date:</strong></td>
+                    <td style="padding:6px 0;font-size:13px;">{report.date}</td>
+                </tr>
+                <tr>
+                    <td style="padding:6px 0;color:#666;font-size:13px;"><strong>Staff Member(s):</strong></td>
+                    <td style="padding:6px 0;font-size:13px;">{report.staff_members}</td>
+                </tr>
+                <tr>
+                    <td style="padding:6px 0;color:#666;font-size:13px;"><strong>Arrival:</strong></td>
+                    <td style="padding:6px 0;font-size:13px;">{report.site_arrival_time}</td>
+                </tr>
+                <tr>
+                    <td style="padding:6px 0;color:#666;font-size:13px;"><strong>Departure:</strong></td>
+                    <td style="padding:6px 0;font-size:13px;">{report.site_departure_time}</td>
+                </tr>
+                <tr>
+                    <td style="padding:6px 0;color:#666;font-size:13px;"><strong>Weather:</strong></td>
+                    <td style="padding:6px 0;font-size:13px;">{report.weather_conditions}</td>
+                </tr>
+                <tr>
+                    <td style="padding:6px 0;color:#666;font-size:13px;"><strong>Contractor:</strong></td>
+                    <td style="padding:6px 0;font-size:13px;">{report.contractor_responsible}</td>
+                </tr>
+            </table>
+
+            <div style="background:#f5f5f5;padding:12px;border-radius:6px;margin-bottom:15px;">
+                <strong style="font-size:13px;color:#666;">Site Description:</strong>
+                <p style="margin:6px 0 0;font-size:13px;">{report.site_description}</p>
+            </div>
+
+            <div style="background:#fff3e0;padding:12px;border-radius:6px;margin-bottom:15px;border-left:3px solid #FF9800;">
+                <strong style="font-size:13px;color:#e65100;">Risks / Hazards / Incidents:</strong>
+                <p style="margin:6px 0 0;font-size:13px;">{report.risks_hazards_incidents or 'None reported'}</p>
+                <p style="margin:6px 0 0;font-size:12px;color:#666;"><strong>Toolbox Talk Required:</strong> {toolbox}</p>
+            </div>
+
+            <h3 style="color:#4CAF50;font-size:14px;margin:20px 0 10px;">Safety Checklist</h3>
+            <table style="width:100%;border-collapse:collapse;">
+                {checklist_rows}
+            </table>
+
+            <div style="margin-top:20px;padding:12px;background:#e8f5e9;border-radius:6px;border-left:3px solid #4CAF50;">
+                <strong style="font-size:13px;">Declaration</strong>
+                <p style="font-size:12px;color:#666;margin:6px 0;">
+                    Signed by <strong>{report.staff_print_name}</strong> on {report.declaration_date}
+                </p>
+            </div>
+
+            <p style="font-size:12px;color:#888;margin-top:15px;text-align:center;">
+                {photo_count} site photo(s) included in the attached PDF report.
+            </p>
+        </div>
+        
+        <div style="background:#f5f5f5;padding:15px;text-align:center;border-radius:0 0 8px 8px;border:1px solid #e0e0e0;border-top:none;">
+            <p style="margin:0;font-size:11px;color:#999;">
+                Generated by SafetyPaws — {settings.company_name}
+            </p>
+        </div>
+    </div>
+    """
+    return html
+
+
 @api_router.post("/reports/{report_id}/email", response_model=EmailResponse)
 async def send_report_email(report_id: str, email_req: EmailRequest):
     report = await db.reports.find_one({"id": report_id})
@@ -655,29 +797,82 @@ async def send_report_email(report_id: str, email_req: EmailRequest):
         settings = AppSettings().model_dump()
     
     settings_obj = AppSettings(**settings)
+    report_obj = SiteVisitReport(**report)
     recipient = email_req.recipient_email or settings_obj.default_recipient_email
     
     # Check if SMTP is enabled and configured
-    if settings_obj.smtp_enabled and settings_obj.smtp_host:
-        # TODO: Implement real SMTP sending here
-        # For now, we'll mock it but log that SMTP is configured
-        logger.info(f"SMTP configured but using mock: would send to {recipient}")
-    
-    # Mock email sending
-    logger.info(f"[MOCK] Sending email to {recipient} for report {report_id}")
-    
-    # Update report to mark email as sent
-    await db.reports.update_one(
-        {"id": report_id},
-        {"$set": {"email_sent": True, "email_sent_to": recipient}}
-    )
-    
-    return EmailResponse(
-        success=True,
-        message=f"Email {'would be' if not settings_obj.smtp_enabled else ''} sent to {recipient}",
-        mocked=not settings_obj.smtp_enabled,
-        recipient=recipient
-    )
+    if settings_obj.smtp_enabled and settings_obj.smtp_host and settings_obj.smtp_username and settings_obj.smtp_password:
+        try:
+            # Generate PDF
+            pdf_bytes = generate_pdf(report_obj, settings_obj)
+            pdf_filename = f"site_visit_{report_obj.job_no_name}_{report_obj.date}.pdf".replace(" ", "_").replace("/", "-")
+            
+            # Build email
+            subject = f"Site Visit Report — {report_obj.job_no_name} — {report_obj.date}"
+            html_body = build_email_html(report_obj, settings_obj)
+            
+            # Send email
+            send_smtp_email(
+                smtp_host=settings_obj.smtp_host,
+                smtp_port=settings_obj.smtp_port,
+                smtp_username=settings_obj.smtp_username,
+                smtp_password=settings_obj.smtp_password,
+                smtp_use_tls=settings_obj.smtp_use_tls,
+                recipient=recipient,
+                subject=subject,
+                html_body=html_body,
+                pdf_bytes=pdf_bytes,
+                pdf_filename=pdf_filename,
+            )
+            
+            logger.info(f"Email sent successfully to {recipient} for report {report_id}")
+            
+            # Update report to mark email as sent
+            await db.reports.update_one(
+                {"id": report_id},
+                {"$set": {"email_sent": True, "email_sent_to": recipient}}
+            )
+            
+            return EmailResponse(
+                success=True,
+                message=f"Email sent successfully to {recipient}",
+                mocked=False,
+                recipient=recipient
+            )
+        except smtplib.SMTPAuthenticationError as e:
+            logger.error(f"SMTP authentication failed: {e}")
+            raise HTTPException(
+                status_code=400, 
+                detail="SMTP authentication failed. Check your username and app password in Settings."
+            )
+        except smtplib.SMTPException as e:
+            logger.error(f"SMTP error: {e}")
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Failed to send email: {str(e)}"
+            )
+        except Exception as e:
+            logger.error(f"Email sending error: {e}")
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Failed to send email: {str(e)}"
+            )
+    else:
+        # Mock email sending when SMTP is not configured
+        logger.info(f"[MOCK] Email to {recipient} for report {report_id} (SMTP not configured)")
+        
+        # Update report to mark email as sent (mock)
+        await db.reports.update_one(
+            {"id": report_id},
+            {"$set": {"email_sent": True, "email_sent_to": recipient}}
+        )
+        
+        return EmailResponse(
+            success=True,
+            message=f"Email simulated to {recipient}. Configure SMTP in Settings to send real emails.",
+            mocked=True,
+            recipient=recipient
+        )
 
 # Include the router in the main app
 app.include_router(api_router)

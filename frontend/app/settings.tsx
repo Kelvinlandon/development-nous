@@ -38,7 +38,7 @@ interface Settings {
 export default function SettingsScreen() {
   const [settings, setSettings] = useState<Settings>({
     default_recipient_email: 'kelvin.landon@developmentnous.nz',
-    smtp_host: '',
+    smtp_host: 'smtp.gmail.com',
     smtp_port: 587,
     smtp_username: '',
     smtp_password: '',
@@ -351,10 +351,17 @@ export default function SettingsScreen() {
           {/* SMTP Info Box */}
           <View style={styles.infoBox}>
             <Ionicons name="information-circle" size={20} color="#1976D2" />
-            <Text style={styles.infoText}>
-              For Gmail, use an App Password instead of your regular password.
-              Enable 2FA and generate an App Password in Google Account settings.
-            </Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.infoText}>
+                <Text style={{ fontWeight: '600' }}>Gmail Setup:{'\n'}</Text>
+                1. Go to myaccount.google.com → Security{'\n'}
+                2. Enable 2-Step Verification{'\n'}
+                3. Search for "App passwords" in Security{'\n'}
+                4. Create a new app password for "Mail"{'\n'}
+                5. Use your Gmail as Username and the 16-character app password as Password above{'\n'}
+                6. Host: smtp.gmail.com, Port: 587, TLS: On
+              </Text>
+            </View>
           </View>
 
           <View style={{ height: 100 }} />

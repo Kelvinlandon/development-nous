@@ -142,15 +142,16 @@ export default function ReportDetailScreen() {
       });
       
       const message = response.data.mocked 
-        ? `Email would be sent to ${response.data.recipient} (SMTP not configured)`
-        : `Email sent to ${response.data.recipient}`;
+        ? `Email simulated to ${response.data.recipient}.\n\nTo send real emails, configure Gmail SMTP in Settings.`
+        : `Email sent successfully to ${response.data.recipient} with PDF attachment!`;
       
-      Alert.alert('Success', message);
+      Alert.alert(response.data.mocked ? 'Simulated' : 'Email Sent!', message);
       setShowEmailModal(false);
       fetchReport(); // Refresh to show email_sent status
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending email:', error);
-      Alert.alert('Error', 'Failed to send email');
+      const errorMsg = error.response?.data?.detail || 'Failed to send email. Check SMTP settings.';
+      Alert.alert('Email Failed', errorMsg);
     } finally {
       setSending(false);
     }
