@@ -20,7 +20,7 @@ export default function RootLayout() {
         <Stack.Screen
           name="index"
           options={{
-            title: 'Site Visit Checklist',
+            title: 'SafetyPaws',
           }}
         />
         <Stack.Screen

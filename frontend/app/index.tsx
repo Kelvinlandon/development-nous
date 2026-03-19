@@ -96,7 +96,6 @@ export default function HomeScreen() {
               style={styles.logo}
               resizeMode="contain"
             />
-            <Text style={styles.companyName}>Development Nous Limited</Text>
           </View>
           
           {/* Office Dog on Right */}
@@ -105,6 +104,12 @@ export default function HomeScreen() {
             style={styles.dogIcon}
             resizeMode="contain"
           />
+        </View>
+        
+        {/* Tagline */}
+        <View style={styles.taglineContainer}>
+          <Text style={styles.taglineMain}>Paws for a moment for safety</Text>
+          <Text style={styles.taglineSub}>Don't leave the office without the treats!</Text>
         </View>
       </View>
 
@@ -189,6 +194,24 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 10,
+  },
+  taglineContainer: {
+    alignItems: 'center',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#333',
+  },
+  taglineMain: {
+    color: '#4CAF50',
+    fontSize: 14,
+    fontWeight: '600',
+    fontStyle: 'italic',
+  },
+  taglineSub: {
+    color: '#888',
+    fontSize: 11,
+    marginTop: 2,
   },
   companyName: {
     color: '#4CAF50',
