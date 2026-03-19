@@ -228,32 +228,48 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
         
         # Footer on every page
         canvas.setFillColor(LIGHT_GRAY)
-        canvas.rect(0, 0, A4[0], 30, fill=True, stroke=False)
+        canvas.rect(0, 0, A4[0], 35, fill=True, stroke=False)
         canvas.setFillColor(GREEN)
-        canvas.rect(0, 30, A4[0], 2, fill=True, stroke=False)
+        canvas.rect(0, 35, A4[0], 2, fill=True, stroke=False)
         canvas.setFillColor(GRAY)
         canvas.setFont('Helvetica', 7)
-        canvas.drawCentredString(A4[0]/2, 12, f"{settings.company_name}  |  SafetyPaws Site Visit Report  |  {report.date}")
+        canvas.drawCentredString(A4[0]/2, 14, f"{settings.company_name}  |  SafetyPaws Site Visit Report  |  {report.date}")
+        
+        # Waiting Harry bottom-left in footer
+        harry_wait_path = ROOT_DIR / 'assets' / 'harry_waiting.png'
+        if harry_wait_path.exists():
+            try:
+                canvas.drawImage(str(harry_wait_path), 10, -10, width=60, height=60, preserveAspectRatio=True, mask='auto')
+            except Exception:
+                pass
         
         canvas.restoreState()
     
     def on_later_pages(canvas, doc):
-        """Footer only on subsequent pages"""
+        """Footer with waiting Harry on subsequent pages"""
         canvas.saveState()
-        # Footer
+        # Footer background
         canvas.setFillColor(LIGHT_GRAY)
-        canvas.rect(0, 0, A4[0], 30, fill=True, stroke=False)
+        canvas.rect(0, 0, A4[0], 35, fill=True, stroke=False)
         canvas.setFillColor(GREEN)
-        canvas.rect(0, 30, A4[0], 2, fill=True, stroke=False)
+        canvas.rect(0, 35, A4[0], 2, fill=True, stroke=False)
         canvas.setFillColor(GRAY)
         canvas.setFont('Helvetica', 7)
-        canvas.drawCentredString(A4[0]/2, 12, f"{settings.company_name}  |  SafetyPaws Site Visit Report  |  Page {doc.page}")
+        canvas.drawCentredString(A4[0]/2, 14, f"{settings.company_name}  |  SafetyPaws Site Visit Report  |  Page {doc.page}")
         
-        # Small Harry in top right corner
+        # Waiting Harry bottom-left in footer
+        harry_wait_path = ROOT_DIR / 'assets' / 'harry_waiting.png'
+        if harry_wait_path.exists():
+            try:
+                canvas.drawImage(str(harry_wait_path), 10, -10, width=60, height=60, preserveAspectRatio=True, mask='auto')
+            except Exception:
+                pass
+        
+        # Bigger Harry in top right corner
         harry_path = ROOT_DIR / 'assets' / 'harry.png'
         if harry_path.exists():
             try:
-                canvas.drawImage(str(harry_path), A4[0] - 50, A4[1] - 45, width=30, height=30, preserveAspectRatio=True, mask='auto')
+                canvas.drawImage(str(harry_path), A4[0] - 70, A4[1] - 60, width=55, height=55, preserveAspectRatio=True, mask='auto')
             except Exception:
                 pass
         
