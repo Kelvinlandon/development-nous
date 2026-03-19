@@ -194,30 +194,33 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
     ORANGE = colors.HexColor('#FF9800')
     RED = colors.HexColor('#F44336')
     
+    # Safe print margins (15mm = ~42pts)
+    MARGIN = 42
+    
     def on_first_page(canvas, doc):
         """Draw a print-friendly header with logo and Harry on the first page"""
         canvas.saveState()
-        # Light green header background (print-friendly)
+        # Light green header background (within margins)
         canvas.setFillColor(LIGHT_GREEN)
-        canvas.rect(0, A4[1] - 110, A4[0], 110, fill=True, stroke=False)
+        canvas.rect(MARGIN, A4[1] - 110, A4[0] - 2*MARGIN, 95, fill=True, stroke=False)
         
         # Green accent line under header
         canvas.setFillColor(GREEN)
-        canvas.rect(0, A4[1] - 113, A4[0], 3, fill=True, stroke=False)
+        canvas.rect(MARGIN, A4[1] - 113, A4[0] - 2*MARGIN, 3, fill=True, stroke=False)
         
-        # Add DNL logo (left side)
+        # Add DNL logo (left side, inside margin)
         logo_path = ROOT_DIR / 'assets' / 'dnl_logo.png'
         if logo_path.exists():
             try:
-                canvas.drawImage(str(logo_path), 30, A4[1] - 80, width=120, height=45, preserveAspectRatio=True, mask='auto')
+                canvas.drawImage(str(logo_path), MARGIN + 10, A4[1] - 80, width=120, height=45, preserveAspectRatio=True, mask='auto')
             except Exception:
                 pass
         
-        # Add Harry (right side - twice as big)
+        # Add Harry (right side, inside margin - big)
         harry_path = ROOT_DIR / 'assets' / 'harry.png'
         if harry_path.exists():
             try:
-                canvas.drawImage(str(harry_path), A4[0] - 130, A4[1] - 108, width=110, height=110, preserveAspectRatio=True, mask='auto')
+                canvas.drawImage(str(harry_path), A4[0] - MARGIN - 105, A4[1] - 108, width=100, height=100, preserveAspectRatio=True, mask='auto')
             except Exception:
                 pass
         
@@ -226,20 +229,20 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
         canvas.setFont('Helvetica-Oblique', 9)
         canvas.drawCentredString(A4[0]/2, A4[1] - 100, "Take ya time and Paws for safety!")
         
-        # Footer on every page
+        # Footer
         canvas.setFillColor(LIGHT_GRAY)
-        canvas.rect(0, 0, A4[0], 35, fill=True, stroke=False)
+        canvas.rect(MARGIN, MARGIN, A4[0] - 2*MARGIN, 30, fill=True, stroke=False)
         canvas.setFillColor(GREEN)
-        canvas.rect(0, 35, A4[0], 2, fill=True, stroke=False)
+        canvas.rect(MARGIN, MARGIN + 30, A4[0] - 2*MARGIN, 2, fill=True, stroke=False)
         canvas.setFillColor(GRAY)
         canvas.setFont('Helvetica', 7)
-        canvas.drawCentredString(A4[0]/2, 14, f"{settings.company_name}  |  SafetyPaws Site Visit Report  |  {report.date}")
+        canvas.drawCentredString(A4[0]/2, MARGIN + 10, f"{settings.company_name}  |  SafetyPaws Site Visit Report  |  {report.date}")
         
-        # Waiting Harry bottom-left in footer
+        # Waiting Harry bottom-left in footer (inside margin)
         harry_wait_path = ROOT_DIR / 'assets' / 'harry_waiting.png'
         if harry_wait_path.exists():
             try:
-                canvas.drawImage(str(harry_wait_path), 10, -10, width=60, height=60, preserveAspectRatio=True, mask='auto')
+                canvas.drawImage(str(harry_wait_path), MARGIN, MARGIN - 5, width=50, height=50, preserveAspectRatio=True, mask='auto')
             except Exception:
                 pass
         
@@ -248,28 +251,28 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
     def on_later_pages(canvas, doc):
         """Footer with waiting Harry on subsequent pages"""
         canvas.saveState()
-        # Footer background
+        # Footer
         canvas.setFillColor(LIGHT_GRAY)
-        canvas.rect(0, 0, A4[0], 35, fill=True, stroke=False)
+        canvas.rect(MARGIN, MARGIN, A4[0] - 2*MARGIN, 30, fill=True, stroke=False)
         canvas.setFillColor(GREEN)
-        canvas.rect(0, 35, A4[0], 2, fill=True, stroke=False)
+        canvas.rect(MARGIN, MARGIN + 30, A4[0] - 2*MARGIN, 2, fill=True, stroke=False)
         canvas.setFillColor(GRAY)
         canvas.setFont('Helvetica', 7)
-        canvas.drawCentredString(A4[0]/2, 14, f"{settings.company_name}  |  SafetyPaws Site Visit Report  |  Page {doc.page}")
+        canvas.drawCentredString(A4[0]/2, MARGIN + 10, f"{settings.company_name}  |  SafetyPaws Site Visit Report  |  Page {doc.page}")
         
-        # Waiting Harry bottom-left in footer
+        # Waiting Harry bottom-left (inside margin)
         harry_wait_path = ROOT_DIR / 'assets' / 'harry_waiting.png'
         if harry_wait_path.exists():
             try:
-                canvas.drawImage(str(harry_wait_path), 10, -10, width=60, height=60, preserveAspectRatio=True, mask='auto')
+                canvas.drawImage(str(harry_wait_path), MARGIN, MARGIN - 5, width=50, height=50, preserveAspectRatio=True, mask='auto')
             except Exception:
                 pass
         
-        # Bigger Harry in top right corner
+        # Harry top-right (inside margin)
         harry_path = ROOT_DIR / 'assets' / 'harry.png'
         if harry_path.exists():
             try:
-                canvas.drawImage(str(harry_path), A4[0] - 70, A4[1] - 60, width=55, height=55, preserveAspectRatio=True, mask='auto')
+                canvas.drawImage(str(harry_path), A4[0] - MARGIN - 55, A4[1] - MARGIN - 50, width=50, height=50, preserveAspectRatio=True, mask='auto')
             except Exception:
                 pass
         
@@ -281,7 +284,7 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
         rightMargin=20*mm,
         leftMargin=20*mm,
         topMargin=120,  # Space for header on first page
-        bottomMargin=40
+        bottomMargin=80  # Space for footer with waiting Harry
     )
     
     story = []
