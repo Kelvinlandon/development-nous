@@ -56,6 +56,7 @@ class Job(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     job_number: str
     job_name: str
+    job_address: str = ""
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 class StaffMemberCreate(BaseModel):
@@ -64,6 +65,7 @@ class StaffMemberCreate(BaseModel):
 class JobCreate(BaseModel):
     job_number: str
     job_name: str
+    job_address: str = ""
 
 class SafetyChecklistItem(BaseModel):
     question: str
@@ -86,6 +88,7 @@ class SiteVisitReport(BaseModel):
     staff_members: str
     date: str
     job_no_name: str
+    job_address: str = ""
     purpose_of_visit: List[str] = []
     site_arrival_time: str
     site_departure_time: str
@@ -132,6 +135,7 @@ class SiteVisitReportCreate(BaseModel):
     staff_members: str
     date: str
     job_no_name: str
+    job_address: str = ""
     purpose_of_visit: List[str] = []
     site_arrival_time: str
     site_departure_time: str
@@ -374,6 +378,8 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
         [Paragraph("<b>Contractor</b>", small_style), Paragraph(report.contractor_responsible, normal_style),
          "", ""],
     ]
+    if report.job_address:
+        site_data.append([Paragraph("<b>Job Address</b>", small_style), Paragraph(report.job_address, normal_style), "", ""])
     site_table = Table(site_data, colWidths=[75, 145, 75, 145])
     site_table.setStyle(TableStyle([
         ('FONTSIZE', (0, 0), (-1, -1), 8),
@@ -916,9 +922,20 @@ async def sync_from_csv():
                             job_name = vals[1]
                     
                     if job_number and job_number.strip():
+                        # Get address from column C or known names
+                        job_address = (row.get('job_address') or row.get('Job Address') or row.get('address') or
+                                       row.get('Address') or row.get('Site Address') or row.get('site_address') or
+                                       row.get('Location') or row.get('location') or '')
+                        # If no known column, try third column
+                        if not job_address.strip() and row:
+                            vals = list(row.values())
+                            if len(vals) >= 3 and vals[2] and vals[2].strip():
+                                job_address = vals[2]
+                        
                         job_obj = Job(
                             job_number=job_number.strip(),
-                            job_name=(job_name or '').strip()
+                            job_name=(job_name or '').strip(),
+                            job_address=(job_address or '').strip()
                         )
                         await db.jobs.insert_one(job_obj.model_dump())
                         jobs_count += 1
@@ -945,6 +962,43 @@ async def sync_from_csv():
         staff_count=staff_count,
         jobs_count=jobs_count
     )
+
+# Geocoding endpoint for address validation
+@api_router.get("/geocode")
+async def geocode_address(address: str):
+    """Validate an address and return coordinates using OpenStreetMap Nominatim"""
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                "https://nominatim.openstreetmap.org/search",
+                params={
+                    "q": address,
+                    "format": "json",
+                    "limit": 5,
+                    "addressdetails": 1,
+                },
+                headers={"User-Agent": "SafetyPaws/1.0"}
+            )
+            response.raise_for_status()
+            results = response.json()
+            
+            if not results:
+                return {"valid": False, "results": [], "message": "No matching addresses found"}
+            
+            formatted = []
+            for r in results:
+                formatted.append({
+                    "display_name": r.get("display_name", ""),
+                    "latitude": float(r.get("lat", 0)),
+                    "longitude": float(r.get("lon", 0)),
+                    "type": r.get("type", ""),
+                    "importance": r.get("importance", 0),
+                })
+            
+            return {"valid": True, "results": formatted}
+    except Exception as e:
+        logger.error(f"Geocoding error: {e}")
+        return {"valid": False, "results": [], "message": str(e)}
 
 # Settings endpoints
 @api_router.get("/settings", response_model=AppSettings)

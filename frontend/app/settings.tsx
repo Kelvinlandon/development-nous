@@ -346,6 +346,7 @@ export default function SettingsScreen() {
                 <Text style={{ fontWeight: '600' }}>Jobs spreadsheet:{'\n'}</Text>
                 {'  '}Column A header: "Job Number"{'\n'}
                 {'  '}Column B header: "Job Name"{'\n'}
+                {'  '}Column C header: "Address"{'\n'}
                 {'  '}Then list each job in the rows below{'\n\n'}
                 <Text style={{ fontWeight: '600' }}>IMPORTANT:{'\n'}</Text>
                 {'  '}1. Click Share → "Anyone with the link" → Viewer{'\n'}

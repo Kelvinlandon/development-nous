@@ -21,6 +21,7 @@ import Constants from 'expo-constants';
 import SignatureCanvas from 'react-native-signature-canvas';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
+import * as Linking from 'expo-linking';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
 const API_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || 
@@ -80,6 +81,9 @@ interface FormData {
   staff_members: string;
   date: string;
   job_no_name: string;
+  job_address: string;
+  job_address_lat: number | null;
+  job_address_lng: number | null;
   purpose_of_visit: string[];
   site_arrival_time: string;
   site_departure_time: string;
@@ -134,10 +138,14 @@ export default function FormScreen() {
   
   // Staff and Jobs lists
   const [staffList, setStaffList] = useState<Array<{id: string, name: string}>>([]);
-  const [jobsList, setJobsList] = useState<Array<{id: string, job_number: string, job_name: string}>>([]);
+  const [jobsList, setJobsList] = useState<Array<{id: string, job_number: string, job_name: string, job_address?: string}>>([]);
   const [showStaffPicker, setShowStaffPicker] = useState(false);
   const [showJobPicker, setShowJobPicker] = useState(false);
   const [showSiteTypePicker, setShowSiteTypePicker] = useState(false);
+  const [addressValidated, setAddressValidated] = useState(false);
+  const [validatingAddress, setValidatingAddress] = useState(false);
+  const [addressSuggestions, setAddressSuggestions] = useState<Array<{display_name: string, latitude: number, longitude: number}>>([]);
+  const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
   const [newStaffName, setNewStaffName] = useState('');
   const [newJobNumber, setNewJobNumber] = useState('');
   const [newJobName, setNewJobName] = useState('');
@@ -205,11 +213,55 @@ export default function FormScreen() {
       return newSelection;
     });
   };
+
+  const validateAddress = async (address: string) => {
+    if (!address || address.trim().length < 3) return;
+    setValidatingAddress(true);
+    try {
+      const response = await axios.get(`${API_URL}/api/geocode`, { params: { address: address.trim() } });
+      if (response.data.valid && response.data.results.length > 0) {
+        setAddressSuggestions(response.data.results);
+        setShowAddressSuggestions(true);
+      } else {
+        Alert.alert('Address Not Found', 'Could not find a matching address. You can still use a custom address.');
+        setAddressSuggestions([]);
+      }
+    } catch (error) {
+      console.error('Geocoding error:', error);
+    } finally {
+      setValidatingAddress(false);
+    }
+  };
+
+  const selectAddressSuggestion = (suggestion: {display_name: string, latitude: number, longitude: number}) => {
+    setFormData(prev => ({
+      ...prev,
+      job_address: suggestion.display_name,
+      job_address_lat: suggestion.latitude,
+      job_address_lng: suggestion.longitude,
+    }));
+    setAddressValidated(true);
+    setShowAddressSuggestions(false);
+  };
+
+  const openInMaps = () => {
+    if (formData.job_address_lat && formData.job_address_lng) {
+      const url = Platform.select({
+        ios: `maps:0,0?q=${formData.job_address_lat},${formData.job_address_lng}`,
+        android: `geo:${formData.job_address_lat},${formData.job_address_lng}?q=${formData.job_address_lat},${formData.job_address_lng}`,
+        default: `https://www.openstreetmap.org/?mlat=${formData.job_address_lat}&mlon=${formData.job_address_lng}#map=16/${formData.job_address_lat}/${formData.job_address_lng}`,
+      });
+      if (url) Linking.openURL(url);
+    }
+  };
   
   const [formData, setFormData] = useState<FormData>({
     staff_members: '',
     date: todayString,
     job_no_name: '',
+    job_address: '',
+    job_address_lat: null,
+    job_address_lng: null,
     purpose_of_visit: [],
     site_arrival_time: '',
     site_departure_time: '',
@@ -791,6 +843,68 @@ export default function FormScreen() {
             <Ionicons name="chevron-down" size={20} color="#999" />
           </TouchableOpacity>
         </View>
+      </View>
+
+      {/* Job Address */}
+      <View style={styles.inputGroup}>
+        <Text style={styles.label}>Job Address</Text>
+        <View style={styles.addressRow}>
+          <TextInput
+            style={[styles.input, { flex: 1 }]}
+            value={formData.job_address}
+            onChangeText={(text) => {
+              updateField('job_address', text);
+              setAddressValidated(false);
+            }}
+            placeholder="Enter or edit job address..."
+          />
+          <TouchableOpacity
+            style={[styles.validateButton, validatingAddress && { opacity: 0.6 }]}
+            onPress={() => validateAddress(formData.job_address)}
+            disabled={validatingAddress || !formData.job_address}
+          >
+            {validatingAddress ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Ionicons name="search" size={18} color="#fff" />
+            )}
+          </TouchableOpacity>
+        </View>
+        
+        {/* Address suggestions */}
+        {showAddressSuggestions && addressSuggestions.length > 0 && (
+          <View style={styles.suggestionsContainer}>
+            <Text style={styles.suggestionsTitle}>Select verified address:</Text>
+            {addressSuggestions.map((s, idx) => (
+              <TouchableOpacity
+                key={idx}
+                style={styles.suggestionItem}
+                onPress={() => selectAddressSuggestion(s)}
+              >
+                <Ionicons name="location" size={16} color="#4CAF50" />
+                <Text style={styles.suggestionText} numberOfLines={2}>{s.display_name}</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              style={styles.dismissSuggestions}
+              onPress={() => setShowAddressSuggestions(false)}
+            >
+              <Text style={styles.dismissText}>Dismiss</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        
+        {/* Validated address badge + map link */}
+        {addressValidated && formData.job_address_lat && (
+          <View style={styles.validatedRow}>
+            <Ionicons name="checkmark-circle" size={18} color="#4CAF50" />
+            <Text style={styles.validatedText}>Address verified</Text>
+            <TouchableOpacity style={styles.mapButton} onPress={openInMaps}>
+              <Ionicons name="map-outline" size={16} color="#fff" />
+              <Text style={styles.mapButtonText}>View on Map</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {/* Purpose of Visit */}
@@ -1676,6 +1790,16 @@ export default function FormScreen() {
                   onPress={() => {
                     const jobDisplay = `${job.job_number} - ${job.job_name}`;
                     updateField('job_no_name', jobDisplay);
+                    // Auto-fill address from job data
+                    if (job.job_address) {
+                      setFormData(prev => ({
+                        ...prev,
+                        job_no_name: jobDisplay,
+                        job_address: job.job_address || '',
+                      }));
+                      // Auto-validate the address
+                      validateAddress(job.job_address);
+                    }
                     setShowJobPicker(false);
                   }}
                 >
@@ -2158,6 +2282,82 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     flex: 1,
+  },
+  addressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  validateButton: {
+    backgroundColor: '#4CAF50',
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  suggestionsContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#4CAF50',
+    marginTop: 8,
+    overflow: 'hidden',
+  },
+  suggestionsTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+    padding: 10,
+    backgroundColor: '#e8f5e9',
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    gap: 8,
+  },
+  suggestionText: {
+    fontSize: 13,
+    color: '#333',
+    flex: 1,
+  },
+  dismissSuggestions: {
+    padding: 10,
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  dismissText: {
+    fontSize: 13,
+    color: '#999',
+  },
+  validatedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 6,
+  },
+  validatedText: {
+    fontSize: 13,
+    color: '#4CAF50',
+    fontWeight: '600',
+    flex: 1,
+  },
+  mapButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 4,
+  },
+  mapButtonText: {
+    fontSize: 12,
+    color: '#fff',
+    fontWeight: '600',
   },
   optionButton: {
     paddingHorizontal: 16,
