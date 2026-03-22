@@ -174,6 +174,10 @@ class AppSettings(BaseModel):
     # External data sync URLs
     staff_csv_url: str = ""
     jobs_csv_url: str = ""
+    # Spreadsheet report frequency
+    report_frequency: str = "manual"  # "manual", "daily", "weekly", "monthly"
+    report_recipient_email: str = ""
+    last_report_sent: Optional[datetime] = None
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
 class AppSettingsUpdate(BaseModel):
@@ -187,6 +191,8 @@ class AppSettingsUpdate(BaseModel):
     company_name: Optional[str] = None
     staff_csv_url: Optional[str] = None
     jobs_csv_url: Optional[str] = None
+    report_frequency: Optional[str] = None
+    report_recipient_email: Optional[str] = None
 
 class EmailRequest(BaseModel):
     report_id: str
@@ -1102,10 +1108,11 @@ def send_smtp_email(
     recipient: str,
     subject: str,
     html_body: str,
-    pdf_bytes: bytes,
-    pdf_filename: str,
+    pdf_bytes: bytes = None,
+    pdf_filename: str = None,
+    attachments: list = None,  # List of (bytes, filename, mime_subtype) tuples
 ) -> None:
-    """Send an email with PDF attachment via SMTP (Gmail compatible)"""
+    """Send an email with attachments via SMTP (Gmail compatible)"""
     msg = MIMEMultipart('mixed')
     msg['From'] = smtp_username
     msg['To'] = recipient
@@ -1115,10 +1122,18 @@ def send_smtp_email(
     html_part = MIMEText(html_body, 'html')
     msg.attach(html_part)
 
-    # Attach PDF
-    pdf_part = MIMEApplication(pdf_bytes, _subtype='pdf')
-    pdf_part.add_header('Content-Disposition', 'attachment', filename=pdf_filename)
-    msg.attach(pdf_part)
+    # Attach PDF if provided
+    if pdf_bytes and pdf_filename:
+        pdf_part = MIMEApplication(pdf_bytes, _subtype='pdf')
+        pdf_part.add_header('Content-Disposition', 'attachment', filename=pdf_filename)
+        msg.attach(pdf_part)
+    
+    # Attach additional files
+    if attachments:
+        for file_bytes, filename, subtype in attachments:
+            part = MIMEApplication(file_bytes, _subtype=subtype)
+            part.add_header('Content-Disposition', 'attachment', filename=filename)
+            msg.attach(part)
 
     # Send via SMTP
     if smtp_use_tls:
@@ -1332,6 +1347,307 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ================== Email Photos Endpoint ==================
+
+@api_router.post("/reports/{report_id}/email-photos", response_model=EmailResponse)
+async def email_report_photos(report_id: str, email_req: EmailRequest):
+    """Email all site photos as individual attachments"""
+    report = await db.reports.find_one({"id": report_id})
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    
+    settings = await db.settings.find_one({"id": "app_settings"})
+    if not settings:
+        settings = AppSettings().model_dump()
+    
+    settings_obj = AppSettings(**settings)
+    report_obj = SiteVisitReport(**report)
+    recipient = email_req.recipient_email or settings_obj.default_recipient_email
+    
+    if not report_obj.site_photos or len(report_obj.site_photos) == 0:
+        return EmailResponse(success=False, message="No photos to send", mocked=False, recipient=recipient)
+    
+    # Extract job number for subject
+    job_number = report_obj.job_no_name.split(' - ')[0] if ' - ' in report_obj.job_no_name else report_obj.job_no_name
+    
+    if settings_obj.smtp_enabled and settings_obj.smtp_host and settings_obj.smtp_username and settings_obj.smtp_password:
+        try:
+            # Build photo attachments
+            attachments = []
+            for i, photo in enumerate(report_obj.site_photos):
+                photo_data = photo.base64_data
+                if "," in photo_data:
+                    photo_data = photo_data.split(",")[1]
+                photo_bytes = base64.b64decode(photo_data)
+                
+                # Get photo name from caption
+                photo_name = f"{job_number}-{i+1}"
+                if photo.caption:
+                    caption_name = photo.caption.split('\n')[0]
+                    if caption_name:
+                        photo_name = caption_name
+                
+                attachments.append((photo_bytes, f"{photo_name}.jpg", "jpeg"))
+            
+            # Build simple HTML body
+            html_body = f"""
+            <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+                <h2 style="color:#4CAF50;">Site Visit Photos — {job_number}</h2>
+                <p><strong>Job:</strong> {report_obj.job_no_name}</p>
+                <p><strong>Date:</strong> {report_obj.date}</p>
+                <p><strong>Staff:</strong> {report_obj.staff_members}</p>
+                <p>{len(attachments)} photo(s) attached.</p>
+                <hr style="border:1px solid #e0e0e0;">
+                <p style="color:#999;font-size:12px;">SafetyPaws — {settings_obj.company_name}</p>
+            </div>
+            """
+            
+            send_smtp_email(
+                smtp_host=settings_obj.smtp_host,
+                smtp_port=settings_obj.smtp_port,
+                smtp_username=settings_obj.smtp_username,
+                smtp_password=settings_obj.smtp_password,
+                smtp_use_tls=settings_obj.smtp_use_tls,
+                recipient=recipient,
+                subject=f"{job_number} — Site Visit Photos — {report_obj.date}",
+                html_body=html_body,
+                attachments=attachments,
+            )
+            
+            logger.info(f"Photos emailed to {recipient} for report {report_id} ({len(attachments)} photos)")
+            return EmailResponse(success=True, message=f"{len(attachments)} photos sent to {recipient}", mocked=False, recipient=recipient)
+        except Exception as e:
+            logger.error(f"Photo email error: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to email photos: {str(e)}")
+    else:
+        return EmailResponse(success=True, message=f"Photos would be sent to {recipient} (SMTP not configured)", mocked=True, recipient=recipient)
+
+
+# ================== Spreadsheet Report ==================
+
+def generate_reports_csv(reports: list) -> bytes:
+    """Generate a CSV spreadsheet from all site visit reports"""
+    output = BytesIO()
+    import io
+    text_output = io.StringIO()
+    
+    fieldnames = [
+        'Date', 'Staff Members', 'Job Number/Name', 'Job Address', 'Purpose of Visit',
+        'Site Description', 'Weather', 'Arrival Time', 'Departure Time',
+        'Contractor', 'Risks/Hazards/Incidents', 'Toolbox Talk Required', 'Toolbox Talk Notes',
+        'Checklist Comments',
+    ]
+    
+    # Add safety checklist columns
+    checklist_questions = [
+        'PPE Available', 'Hazards Identified', 'Safety Barriers', 'First Aid Kit',
+        'Emergency Procedures', 'Work Permits', 'Electrical Equipment Safe',
+        'Manual Handling Safe', 'Environmental Controls', 'Site Tidy'
+    ]
+    for q in checklist_questions:
+        fieldnames.append(f"Safety: {q}")
+        fieldnames.append(f"Safety Notes: {q}")
+    
+    fieldnames.extend([
+        'Building Consent Inspection', 'Inspection Notes', 'Inspection Result',
+        'Evidence Received', 'Evidence Date',
+        'Number of Photos', 'Signature Name', 'Declaration Date',
+        'Email Sent', 'Email Sent To', 'Created At'
+    ])
+    
+    writer = csv.DictWriter(text_output, fieldnames=fieldnames)
+    writer.writeheader()
+    
+    for report in reports:
+        row = {
+            'Date': report.get('date', ''),
+            'Staff Members': report.get('staff_members', ''),
+            'Job Number/Name': report.get('job_no_name', ''),
+            'Job Address': report.get('job_address', ''),
+            'Purpose of Visit': ', '.join(report.get('purpose_of_visit', [])),
+            'Site Description': report.get('site_description', ''),
+            'Weather': report.get('weather_conditions', ''),
+            'Arrival Time': report.get('site_arrival_time', ''),
+            'Departure Time': report.get('site_departure_time', ''),
+            'Contractor': report.get('contractor_responsible', ''),
+            'Risks/Hazards/Incidents': report.get('risks_hazards_incidents', ''),
+            'Toolbox Talk Required': 'Yes' if report.get('toolbox_talk_required') else 'No',
+            'Toolbox Talk Notes': report.get('toolbox_talk_notes', ''),
+            'Checklist Comments': report.get('checklist_comments', ''),
+            'Building Consent Inspection': 'Yes' if report.get('building_consent_inspection') else 'No',
+            'Inspection Notes': report.get('inspection_notes', ''),
+            'Inspection Result': report.get('inspection_result', ''),
+            'Evidence Received': 'Yes' if report.get('evidence_received') else 'No',
+            'Evidence Date': report.get('evidence_date', ''),
+            'Number of Photos': len(report.get('site_photos', [])),
+            'Signature Name': report.get('staff_print_name', ''),
+            'Declaration Date': report.get('declaration_date', ''),
+            'Email Sent': 'Yes' if report.get('email_sent') else 'No',
+            'Email Sent To': report.get('email_sent_to', ''),
+            'Created At': str(report.get('created_at', '')),
+        }
+        
+        # Add checklist data
+        checklist = report.get('safety_checklist', [])
+        for i, q in enumerate(checklist_questions):
+            if i < len(checklist):
+                item = checklist[i]
+                ans = item.get('answer', '') if isinstance(item, dict) else ''
+                notes = item.get('notes', '') if isinstance(item, dict) else ''
+                row[f"Safety: {q}"] = ans.upper() if ans else ''
+                row[f"Safety Notes: {q}"] = notes
+            else:
+                row[f"Safety: {q}"] = ''
+                row[f"Safety Notes: {q}"] = ''
+        
+        writer.writerow(row)
+    
+    csv_content = text_output.getvalue()
+    return csv_content.encode('utf-8')
+
+
+@api_router.post("/reports/spreadsheet-email")
+async def email_spreadsheet_report(recipient_email: Optional[str] = None):
+    """Generate and email a spreadsheet of all site visit reports"""
+    settings = await db.settings.find_one({"id": "app_settings"})
+    if not settings:
+        settings = AppSettings().model_dump()
+    
+    settings_obj = AppSettings(**settings)
+    recipient = recipient_email or settings_obj.report_recipient_email or settings_obj.default_recipient_email
+    
+    # Get all reports
+    reports = await db.reports.find().sort("created_at", -1).to_list(1000)
+    
+    if not reports:
+        return {"success": False, "message": "No reports to include in spreadsheet"}
+    
+    if settings_obj.smtp_enabled and settings_obj.smtp_host and settings_obj.smtp_username and settings_obj.smtp_password:
+        try:
+            csv_bytes = generate_reports_csv(reports)
+            
+            from datetime import datetime as dt
+            today = dt.utcnow().strftime('%Y-%m-%d')
+            
+            html_body = f"""
+            <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+                <h2 style="color:#4CAF50;">Site Visit Report Summary</h2>
+                <p><strong>Company:</strong> {settings_obj.company_name}</p>
+                <p><strong>Date Generated:</strong> {today}</p>
+                <p><strong>Total Reports:</strong> {len(reports)}</p>
+                <p>The attached CSV spreadsheet contains all site visit report data in tabular form. You can open it in Excel or Google Sheets.</p>
+                <hr style="border:1px solid #e0e0e0;">
+                <p style="color:#999;font-size:12px;">SafetyPaws — Automated Report</p>
+            </div>
+            """
+            
+            send_smtp_email(
+                smtp_host=settings_obj.smtp_host,
+                smtp_port=settings_obj.smtp_port,
+                smtp_username=settings_obj.smtp_username,
+                smtp_password=settings_obj.smtp_password,
+                smtp_use_tls=settings_obj.smtp_use_tls,
+                recipient=recipient,
+                subject=f"Site Visit Reports — {settings_obj.company_name} — {today}",
+                html_body=html_body,
+                attachments=[(csv_bytes, f"site_visits_{today}.csv", "csv")],
+            )
+            
+            # Update last sent timestamp
+            await db.settings.update_one(
+                {"id": "app_settings"},
+                {"$set": {"last_report_sent": dt.utcnow()}}
+            )
+            
+            logger.info(f"Spreadsheet report emailed to {recipient} ({len(reports)} reports)")
+            return {"success": True, "message": f"Spreadsheet with {len(reports)} reports sent to {recipient}", "recipient": recipient}
+        except Exception as e:
+            logger.error(f"Spreadsheet email error: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to send spreadsheet: {str(e)}")
+    else:
+        return {"success": False, "message": "SMTP not configured. Enable SMTP in Settings to send spreadsheet reports."}
+
+
+# ================== Background Scheduler ==================
+
+import asyncio
+from contextlib import asynccontextmanager
+
+async def check_scheduled_reports():
+    """Check if scheduled reports need to be sent"""
+    while True:
+        try:
+            await asyncio.sleep(3600)  # Check every hour
+            settings = await db.settings.find_one({"id": "app_settings"})
+            if not settings:
+                continue
+            
+            settings_obj = AppSettings(**settings)
+            
+            if settings_obj.report_frequency == "manual" or not settings_obj.smtp_enabled:
+                continue
+            
+            from datetime import datetime as dt, timedelta
+            now = dt.utcnow()
+            last_sent = settings_obj.last_report_sent
+            
+            should_send = False
+            if not last_sent:
+                should_send = True
+            elif settings_obj.report_frequency == "daily" and (now - last_sent) > timedelta(hours=24):
+                should_send = True
+            elif settings_obj.report_frequency == "weekly" and (now - last_sent) > timedelta(days=7):
+                should_send = True
+            elif settings_obj.report_frequency == "monthly" and (now - last_sent) > timedelta(days=30):
+                should_send = True
+            
+            if should_send:
+                recipient = settings_obj.report_recipient_email or settings_obj.default_recipient_email
+                reports = await db.reports.find().sort("created_at", -1).to_list(1000)
+                
+                if reports:
+                    csv_bytes = generate_reports_csv(reports)
+                    today = now.strftime('%Y-%m-%d')
+                    
+                    html_body = f"""
+                    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+                        <h2 style="color:#4CAF50;">Scheduled Site Visit Report Summary</h2>
+                        <p><strong>Frequency:</strong> {settings_obj.report_frequency.capitalize()}</p>
+                        <p><strong>Total Reports:</strong> {len(reports)}</p>
+                        <p>Attached CSV contains all site visit data.</p>
+                        <hr style="border:1px solid #e0e0e0;">
+                        <p style="color:#999;font-size:12px;">SafetyPaws — {settings_obj.company_name}</p>
+                    </div>
+                    """
+                    
+                    send_smtp_email(
+                        smtp_host=settings_obj.smtp_host,
+                        smtp_port=settings_obj.smtp_port,
+                        smtp_username=settings_obj.smtp_username,
+                        smtp_password=settings_obj.smtp_password,
+                        smtp_use_tls=settings_obj.smtp_use_tls,
+                        recipient=recipient,
+                        subject=f"Scheduled Report — {settings_obj.company_name} — {today}",
+                        html_body=html_body,
+                        attachments=[(csv_bytes, f"site_visits_{today}.csv", "csv")],
+                    )
+                    
+                    await db.settings.update_one(
+                        {"id": "app_settings"},
+                        {"$set": {"last_report_sent": now}}
+                    )
+                    logger.info(f"Scheduled {settings_obj.report_frequency} report sent to {recipient}")
+                    
+        except Exception as e:
+            logger.error(f"Scheduled report error: {e}")
+
+@app.on_event("startup")
+async def start_scheduler():
+    asyncio.create_task(check_scheduled_reports())
+
+# Re-include router after new endpoints
+app.include_router(api_router)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

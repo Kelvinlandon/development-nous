@@ -71,6 +71,7 @@ export default function ReportDetailScreen() {
   const [sending, setSending] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [sendingPhotos, setSendingPhotos] = useState(false);
   const [customEmail, setCustomEmail] = useState('');
 
   useEffect(() => {
@@ -156,6 +157,32 @@ export default function ReportDetailScreen() {
       Alert.alert('Email Failed', errorMsg);
     } finally {
       setSending(false);
+    }
+  };
+
+  const sendPhotosEmail = async (email?: string) => {
+    if (!report?.site_photos || report.site_photos.length === 0) {
+      Alert.alert('No Photos', 'This report has no photos to send.');
+      return;
+    }
+    setSendingPhotos(true);
+    try {
+      const response = await axios.post(`${API_URL}/api/reports/${id}/email-photos`, {
+        report_id: id,
+        recipient_email: email || null,
+      });
+      
+      Alert.alert(
+        response.data.mocked ? 'Simulated' : 'Photos Sent!',
+        response.data.message
+      );
+      setShowEmailModal(false);
+    } catch (error: any) {
+      console.error('Error sending photos:', error);
+      const errorMsg = error.response?.data?.detail || 'Failed to send photos.';
+      Alert.alert('Failed', errorMsg);
+    } finally {
+      setSendingPhotos(false);
     }
   };
 
@@ -390,18 +417,34 @@ export default function ReportDetailScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Send Report</Text>
+            <Text style={styles.modalTitle}>Email Options</Text>
             
             <TouchableOpacity
               style={styles.emailOption}
               onPress={() => sendEmail()}
+              disabled={sending}
             >
-              <Ionicons name="mail" size={24} color="#4CAF50" />
+              <Ionicons name="document-text" size={24} color="#4CAF50" />
               <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={styles.emailOptionTitle}>Send to Default</Text>
-                <Text style={styles.emailOptionSubtitle}>Uses the email from settings</Text>
+                <Text style={styles.emailOptionTitle}>Send Report + PDF</Text>
+                <Text style={styles.emailOptionSubtitle}>Email report with PDF attachment</Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#ccc" />
+              {sending ? <ActivityIndicator size="small" color="#4CAF50" /> : <Ionicons name="chevron-forward" size={20} color="#ccc" />}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.emailOption}
+              onPress={() => sendPhotosEmail()}
+              disabled={sendingPhotos || !report?.site_photos?.length}
+            >
+              <Ionicons name="images" size={24} color="#2196F3" />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.emailOptionTitle}>Send Photos</Text>
+                <Text style={styles.emailOptionSubtitle}>
+                  {report?.site_photos?.length ? `${report.site_photos.length} photo(s) as attachments` : 'No photos available'}
+                </Text>
+              </View>
+              {sendingPhotos ? <ActivityIndicator size="small" color="#2196F3" /> : <Ionicons name="chevron-forward" size={20} color="#ccc" />}
             </TouchableOpacity>
 
             <View style={styles.divider} />
@@ -416,16 +459,30 @@ export default function ReportDetailScreen() {
               autoCapitalize="none"
             />
             
-            <TouchableOpacity
-              style={[
-                styles.sendCustomButton,
-                !customEmail && styles.sendCustomButtonDisabled,
-              ]}
-              onPress={() => sendEmail(customEmail)}
-              disabled={!customEmail || sending}
-            >
-              <Text style={styles.sendCustomButtonText}>Send to Custom Email</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity
+                style={[
+                  styles.sendCustomButton,
+                  { flex: 1, backgroundColor: '#4CAF50' },
+                  !customEmail && styles.sendCustomButtonDisabled,
+                ]}
+                onPress={() => sendEmail(customEmail)}
+                disabled={!customEmail || sending}
+              >
+                <Text style={styles.sendCustomButtonText}>Report</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.sendCustomButton,
+                  { flex: 1, backgroundColor: '#2196F3' },
+                  (!customEmail || !report?.site_photos?.length) && styles.sendCustomButtonDisabled,
+                ]}
+                onPress={() => sendPhotosEmail(customEmail)}
+                disabled={!customEmail || sendingPhotos || !report?.site_photos?.length}
+              >
+                <Text style={styles.sendCustomButtonText}>Photos</Text>
+              </TouchableOpacity>
+            </View>
 
             <TouchableOpacity
               style={styles.cancelButton}

@@ -33,6 +33,8 @@ interface Settings {
   company_name: string;
   staff_csv_url: string;
   jobs_csv_url: string;
+  report_frequency: string;
+  report_recipient_email: string;
 }
 
 export default function SettingsScreen() {
@@ -47,10 +49,13 @@ export default function SettingsScreen() {
     company_name: 'Development Nous Limited',
     staff_csv_url: '',
     jobs_csv_url: '',
+    report_frequency: 'manual',
+    report_recipient_email: '',
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [sendingReport, setSendingReport] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
@@ -110,6 +115,20 @@ export default function SettingsScreen() {
       setSyncing(false);
     }
   };
+
+  const sendSpreadsheetReport = async () => {
+    setSendingReport(true);
+    try {
+      const recipient = settings.report_recipient_email || settings.default_recipient_email;
+      const response = await axios.post(`${API_URL}/api/reports/spreadsheet-email?recipient_email=${encodeURIComponent(recipient)}`);
+      Alert.alert(response.data.success ? 'Report Sent!' : 'Error', response.data.message);
+    } catch (error: any) {
+      Alert.alert('Failed', error.response?.data?.detail || 'Failed to send spreadsheet report');
+    } finally {
+      setSendingReport(false);
+    }
+  };
+
 
   if (loading) {
     return (
@@ -370,6 +389,79 @@ export default function SettingsScreen() {
                 6. Host: smtp.gmail.com, Port: 587, TLS: On
               </Text>
             </View>
+          </View>
+
+          {/* Spreadsheet Report Section */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="stats-chart" size={22} color="#4CAF50" />
+              <Text style={styles.sectionTitle}>Spreadsheet Reports</Text>
+            </View>
+            
+            <Text style={styles.syncDescription}>
+              Generate a CSV spreadsheet of all site visit data and email it automatically.
+            </Text>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Report Recipient Email</Text>
+              <TextInput
+                style={styles.input}
+                value={settings.report_recipient_email}
+                onChangeText={(text) =>
+                  setSettings({ ...settings, report_recipient_email: text })
+                }
+                placeholder="Uses default email if empty"
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Auto-Send Frequency</Text>
+              <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                {['manual', 'daily', 'weekly', 'monthly'].map((freq) => (
+                  <TouchableOpacity
+                    key={freq}
+                    style={{
+                      paddingHorizontal: 16,
+                      paddingVertical: 10,
+                      borderRadius: 20,
+                      borderWidth: 2,
+                      borderColor: settings.report_frequency === freq ? '#4CAF50' : '#ddd',
+                      backgroundColor: settings.report_frequency === freq ? '#E8F5E9' : '#fff',
+                    }}
+                    onPress={() => setSettings({ ...settings, report_frequency: freq })}
+                  >
+                    <Text style={{
+                      fontSize: 14,
+                      fontWeight: settings.report_frequency === freq ? '700' : '400',
+                      color: settings.report_frequency === freq ? '#2E7D32' : '#666',
+                    }}>
+                      {freq.charAt(0).toUpperCase() + freq.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <Text style={styles.hint}>
+                {settings.report_frequency === 'manual' ? 'Use the button below to send manually' :
+                 `Report will be sent ${settings.report_frequency} automatically`}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.syncButton, { backgroundColor: '#2196F3' }]}
+              onPress={sendSpreadsheetReport}
+              disabled={sendingReport}
+            >
+              {sendingReport ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="document-text" size={20} color="#fff" />
+                  <Text style={styles.syncButtonText}>Send Report Now</Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
 
           <View style={{ height: 100 }} />
