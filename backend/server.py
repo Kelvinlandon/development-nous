@@ -172,8 +172,8 @@ class AppSettings(BaseModel):
     smtp_enabled: bool = False  # False = mocked email
     company_name: str = "Development Nous Limited"
     # External data sync URLs
-    staff_csv_url: str = ""
-    jobs_csv_url: str = ""
+    staff_csv_url: str = "https://docs.google.com/spreadsheets/d/1IXIYNCBUyP1OHn5sjci-sn2DWq_x1XJiMvgq1YfKz9Y/edit?gid=0#gid=0"
+    jobs_csv_url: str = "https://docs.google.com/spreadsheets/d/1xIpraMOCkGG4MUC3CnQ6o7BhyDbHZ0JzKobt7YlPQgw/edit?gid=0#gid=0"
     # Spreadsheet report frequency
     report_frequency: str = "manual"  # "manual", "daily", "weekly", "monthly"
     report_recipient_email: str = ""
