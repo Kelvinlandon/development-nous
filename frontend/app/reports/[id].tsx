@@ -29,6 +29,7 @@ interface Report {
   staff_members: string;
   date: string;
   job_no_name: string;
+  purpose_of_visit: string[];
   site_arrival_time: string;
   site_departure_time: string;
   site_description: string;
@@ -221,6 +222,9 @@ export default function ReportDetailScreen() {
           <InfoRow label="Departure Time" value={report.site_departure_time} />
           <InfoRow label="Weather" value={report.weather_conditions} />
           <InfoRow label="Contractor" value={report.contractor_responsible} />
+          {report.purpose_of_visit && report.purpose_of_visit.length > 0 && (
+            <InfoRow label="Purpose of Visit" value={report.purpose_of_visit.join(', ')} />
+          )}
           <InfoRow label="Site Description" value={report.site_description} multiline />
         </View>
 

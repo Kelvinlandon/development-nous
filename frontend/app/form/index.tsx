@@ -40,6 +40,16 @@ const SAFETY_CHECKLIST_QUESTIONS = [
   'Is your work vehicle parked safely?',
 ];
 
+const VISIT_PURPOSE_OPTIONS = [
+  'Client Meeting',
+  'Contractor Meeting',
+  'Surveying',
+  'Setout',
+  'Construction monitoring inspection',
+  'Building Consent requirement inspection',
+  'Resource Consent inspection',
+];
+
 interface ChecklistItem {
   question: string;
   answer: string | null;
@@ -60,6 +70,7 @@ interface FormData {
   staff_members: string;
   date: string;
   job_no_name: string;
+  purpose_of_visit: string[];
   site_arrival_time: string;
   site_departure_time: string;
   site_description: string;
@@ -180,6 +191,7 @@ export default function FormScreen() {
     staff_members: '',
     date: todayString,
     job_no_name: '',
+    purpose_of_visit: [],
     site_arrival_time: '',
     site_departure_time: '',
     site_description: '',
@@ -752,6 +764,38 @@ export default function FormScreen() {
             </Text>
             <Ionicons name="chevron-down" size={20} color="#999" />
           </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Purpose of Visit */}
+      <View style={styles.inputGroup}>
+        <Text style={styles.label}>Purpose of Visit</Text>
+        <View style={styles.purposeContainer}>
+          {VISIT_PURPOSE_OPTIONS.map((purpose) => (
+            <TouchableOpacity
+              key={purpose}
+              style={styles.purposeItem}
+              onPress={() => {
+                setFormData(prev => {
+                  const current = prev.purpose_of_visit;
+                  const updated = current.includes(purpose)
+                    ? current.filter(p => p !== purpose)
+                    : [...current, purpose];
+                  return { ...prev, purpose_of_visit: updated };
+                });
+              }}
+            >
+              <View style={[
+                styles.purposeCheckbox,
+                formData.purpose_of_visit.includes(purpose) && styles.purposeCheckboxActive,
+              ]}>
+                {formData.purpose_of_visit.includes(purpose) && (
+                  <Ionicons name="checkmark" size={16} color="#fff" />
+                )}
+              </View>
+              <Text style={styles.purposeText}>{purpose}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
 
@@ -1708,6 +1752,41 @@ const styles = StyleSheet.create({
     borderColor: '#eee',
     marginTop: 8,
     minHeight: 36,
+  },
+  purposeContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    padding: 8,
+  },
+  purposeItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  purposeCheckbox: {
+    width: 26,
+    height: 26,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#ccc',
+    marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
+  purposeCheckboxActive: {
+    backgroundColor: '#4CAF50',
+    borderColor: '#4CAF50',
+  },
+  purposeText: {
+    fontSize: 14,
+    color: '#333',
+    flex: 1,
   },
   optionButton: {
     paddingHorizontal: 16,

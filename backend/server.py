@@ -86,6 +86,7 @@ class SiteVisitReport(BaseModel):
     staff_members: str
     date: str
     job_no_name: str
+    purpose_of_visit: List[str] = []
     site_arrival_time: str
     site_departure_time: str
     site_description: str
@@ -123,6 +124,7 @@ class SiteVisitReportCreate(BaseModel):
     staff_members: str
     date: str
     job_no_name: str
+    purpose_of_visit: List[str] = []
     site_arrival_time: str
     site_departure_time: str
     site_description: str
@@ -371,6 +373,22 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
         ('ROUNDEDCORNERS', [4, 4, 4, 4]),
     ]))
     story.append(site_table)
+    
+    # Purpose of Visit
+    if report.purpose_of_visit and len(report.purpose_of_visit) > 0:
+        story.append(Spacer(1, 6))
+        purpose_text = ", ".join(report.purpose_of_visit)
+        purpose_data = [[Paragraph("<b>Purpose of Visit</b>", small_style)], [Paragraph(purpose_text, normal_style)]]
+        purpose_table = Table(purpose_data, colWidths=[440])
+        purpose_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), LIGHT_GREEN),
+            ('BACKGROUND', (0, 1), (-1, 1), WHITE),
+            ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),
+        ]))
+        story.append(purpose_table)
     
     # Site Description box
     if report.site_description:
@@ -1031,6 +1049,10 @@ def build_email_html(report: SiteVisitReport, settings: AppSettings) -> str:
                 <tr>
                     <td style="padding:6px 0;color:#666;font-size:13px;"><strong>Contractor:</strong></td>
                     <td style="padding:6px 0;font-size:13px;">{report.contractor_responsible}</td>
+                </tr>
+                <tr>
+                    <td style="padding:6px 0;color:#666;font-size:13px;"><strong>Purpose of Visit:</strong></td>
+                    <td style="padding:6px 0;font-size:13px;">{', '.join(report.purpose_of_visit) if report.purpose_of_visit else 'Not specified'}</td>
                 </tr>
             </table>
 
