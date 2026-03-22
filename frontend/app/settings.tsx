@@ -47,8 +47,8 @@ export default function SettingsScreen() {
     smtp_use_tls: true,
     smtp_enabled: false,
     company_name: 'Development Nous Limited',
-    staff_csv_url: '',
-    jobs_csv_url: '',
+    staff_csv_url: 'https://docs.google.com/spreadsheets/d/1IXIYNCBUyP1OHn5sjci-sn2DWq_x1XJiMvgq1YfKz9Y/edit?gid=0#gid=0',
+    jobs_csv_url: 'https://docs.google.com/spreadsheets/d/1xIpraMOCkGG4MUC3CnQ6o7BhyDbHZ0JzKobt7YlPQgw/edit?gid=0#gid=0',
     report_frequency: 'manual',
     report_recipient_email: '',
   });
