@@ -40,6 +40,16 @@ const SAFETY_CHECKLIST_QUESTIONS = [
   'Is your work vehicle parked safely?',
 ];
 
+const SITE_TYPE_OPTIONS = [
+  'Greenfields Residential',
+  'Greenfields Industrial',
+  'Residential',
+  'Industrial',
+  'Farmland',
+  'Subdivision',
+  'Commercial',
+];
+
 const VISIT_PURPOSE_OPTIONS = [
   'Client Meeting',
   'Contractor Meeting',
@@ -119,6 +129,7 @@ export default function FormScreen() {
   const [jobsList, setJobsList] = useState<Array<{id: string, job_number: string, job_name: string}>>([]);
   const [showStaffPicker, setShowStaffPicker] = useState(false);
   const [showJobPicker, setShowJobPicker] = useState(false);
+  const [showSiteTypePicker, setShowSiteTypePicker] = useState(false);
   const [newStaffName, setNewStaffName] = useState('');
   const [newJobNumber, setNewJobNumber] = useState('');
   const [newJobName, setNewJobName] = useState('');
@@ -909,11 +920,27 @@ export default function FormScreen() {
 
       <View style={styles.inputGroup}>
         <Text style={styles.label}>Site Description</Text>
+        <TouchableOpacity
+          style={styles.pickerButton}
+          onPress={() => setShowSiteTypePicker(true)}
+        >
+          <Ionicons name="location-outline" size={20} color="#4CAF50" />
+          <Text style={[
+            styles.pickerButtonText,
+            !formData.site_description.split('\n')[0] && styles.pickerButtonPlaceholder
+          ]} numberOfLines={1}>
+            {formData.site_description.split('\n')[0] || 'Select site type'}
+          </Text>
+          <Ionicons name="chevron-down" size={20} color="#999" />
+        </TouchableOpacity>
         <TextInput
-          style={[styles.input, styles.textArea]}
-          value={formData.site_description}
-          onChangeText={(text) => updateField('site_description', text)}
-          placeholder="Describe the site"
+          style={[styles.input, styles.textArea, { marginTop: 8 }]}
+          value={formData.site_description.includes('\n') ? formData.site_description.split('\n').slice(1).join('\n') : ''}
+          onChangeText={(text) => {
+            const siteType = formData.site_description.split('\n')[0] || '';
+            updateField('site_description', text ? `${siteType}\n${text}` : siteType);
+          }}
+          placeholder="Additional notes about the site..."
           multiline
           numberOfLines={3}
         />
@@ -1502,6 +1529,58 @@ export default function FormScreen() {
             <TouchableOpacity 
               style={styles.pickerDoneButton}
               onPress={() => setShowJobPicker(false)}
+            >
+              <Text style={styles.pickerDoneText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Site Type Picker Modal */}
+      <Modal
+        visible={showSiteTypePicker}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowSiteTypePicker(false)}
+      >
+        <View style={styles.pickerModalOverlay}>
+          <View style={styles.pickerModalContent}>
+            <View style={styles.pickerModalHeader}>
+              <Text style={styles.pickerModalTitle}>Select Site Type</Text>
+              <TouchableOpacity onPress={() => setShowSiteTypePicker(false)}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.pickerList}>
+              {SITE_TYPE_OPTIONS.map((siteType) => {
+                const currentType = formData.site_description.split('\n')[0];
+                const isSelected = currentType === siteType;
+                return (
+                  <TouchableOpacity
+                    key={siteType}
+                    style={[styles.pickerItem, isSelected && { backgroundColor: '#e8f5e9' }]}
+                    onPress={() => {
+                      const notes = formData.site_description.includes('\n') 
+                        ? formData.site_description.split('\n').slice(1).join('\n') 
+                        : '';
+                      updateField('site_description', notes ? `${siteType}\n${notes}` : siteType);
+                      setShowSiteTypePicker(false);
+                    }}
+                  >
+                    <Ionicons name="location-outline" size={20} color="#4CAF50" />
+                    <Text style={[styles.pickerItemText, { marginLeft: 10 }]}>{siteType}</Text>
+                    {isSelected && (
+                      <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+            
+            <TouchableOpacity 
+              style={styles.pickerDoneButton}
+              onPress={() => setShowSiteTypePicker(false)}
             >
               <Text style={styles.pickerDoneText}>Done</Text>
             </TouchableOpacity>
