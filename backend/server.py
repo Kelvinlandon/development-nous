@@ -100,6 +100,14 @@ class SiteVisitReport(BaseModel):
     checklist_comments: str
     safety_checklist: List[SafetyChecklistItem]
     electrical_equipment_list: Optional[str] = None
+    # Building Consent Inspection
+    building_consent_inspection: bool = False
+    inspection_notes: Optional[str] = None
+    inspection_result: Optional[str] = None  # "approved", "pending", "reinspection"
+    evidence_received: bool = False
+    evidence_date: Optional[str] = None
+    evidence_signature: Optional[str] = None
+    evidence_signature_type: Optional[str] = None
     # Site Photos
     site_photos: List[SitePhoto] = []
     # Declaration
@@ -136,6 +144,13 @@ class SiteVisitReportCreate(BaseModel):
     checklist_comments: str
     safety_checklist: List[SafetyChecklistItem]
     electrical_equipment_list: Optional[str] = None
+    building_consent_inspection: bool = False
+    inspection_notes: Optional[str] = None
+    inspection_result: Optional[str] = None
+    evidence_received: bool = False
+    evidence_date: Optional[str] = None
+    evidence_signature: Optional[str] = None
+    evidence_signature_type: Optional[str] = None
     site_photos: List[SitePhotoCreate] = []
     staff_print_name: str
     signature_data: str
@@ -485,6 +500,77 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
     if report.electrical_equipment_list:
         story.append(Spacer(1, 6))
         story.append(Paragraph(f"<b>Electrical Equipment Used:</b> {report.electrical_equipment_list}", normal_style))
+    
+    # ---- Building Consent Inspection ----
+    if report.building_consent_inspection:
+        story.append(Spacer(1, 8))
+        story.append(Paragraph("Building Consent Requirement Inspection", section_style))
+        story.append(Spacer(1, 4))
+        
+        if report.inspection_notes:
+            notes_data = [[Paragraph("<b>Inspection Notes</b>", small_style)], [Paragraph(report.inspection_notes, normal_style)]]
+            notes_table = Table(notes_data, colWidths=[440])
+            notes_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), LIGHT_GREEN),
+                ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
+                ('TOPPADDING', (0, 0), (-1, -1), 5),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+                ('LEFTPADDING', (0, 0), (-1, -1), 8),
+            ]))
+            story.append(notes_table)
+            story.append(Spacer(1, 6))
+        
+        # Inspection result
+        if report.inspection_result:
+            if report.inspection_result == 'approved':
+                result_text = "INSPECTION APPROVED — OK TO PROCEED"
+                result_color = DARK_GREEN
+                result_bg = LIGHT_GREEN
+                border_color = GREEN
+            elif report.inspection_result == 'pending':
+                result_text = "INSPECTION APPROVAL PENDING COMPLETION OF ABOVE"
+                result_color = colors.HexColor('#E65100')
+                result_bg = colors.HexColor('#FFF3E0')
+                border_color = ORANGE
+            else:
+                result_text = "REINSPECTION REQUIRED"
+                result_color = colors.HexColor('#C62828')
+                result_bg = colors.HexColor('#FFEBEE')
+                border_color = RED
+            
+            result_style = ParagraphStyle(
+                'InspResult',
+                parent=normal_style,
+                fontSize=11,
+                fontName='Helvetica-Bold',
+                textColor=result_color,
+                alignment=TA_CENTER
+            )
+            result_data = [[Paragraph(result_text, result_style)]]
+            result_table = Table(result_data, colWidths=[440])
+            result_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, -1), result_bg),
+                ('BOX', (0, 0), (-1, -1), 2, border_color),
+                ('TOPPADDING', (0, 0), (-1, -1), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+            ]))
+            story.append(result_table)
+            
+            # Pending sub-fields
+            if report.inspection_result == 'pending':
+                story.append(Spacer(1, 6))
+                pending_items = []
+                evidence_text = "Evidence of work completion received: "
+                evidence_text += "YES" if report.evidence_received else "NO"
+                pending_items.append(Paragraph(f"<b>{evidence_text}</b>", normal_style))
+                if report.evidence_date:
+                    pending_items.append(Paragraph(f"<b>Date:</b> {report.evidence_date}", normal_style))
+                if report.evidence_signature:
+                    pending_items.append(Paragraph(f"<b>Signed:</b> {report.evidence_signature}", normal_style))
+                
+                for item in pending_items:
+                    story.append(item)
+                    story.append(Spacer(1, 2))
     
     # ---- Declaration (keep together on one page) ----
     declaration_elements = []

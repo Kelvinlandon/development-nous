@@ -94,6 +94,14 @@ interface FormData {
   checklist_comments: string;
   safety_checklist: ChecklistItem[];
   electrical_equipment_list: string;
+  // Building Consent Inspection
+  building_consent_inspection: boolean;
+  inspection_notes: string;
+  inspection_result: '' | 'approved' | 'pending' | 'reinspection';
+  evidence_received: boolean;
+  evidence_date: string;
+  evidence_signature: string;
+  evidence_signature_type: 'drawn' | 'typed';
   // Photos
   site_photos: SitePhoto[];
   // Declaration
@@ -218,6 +226,13 @@ export default function FormScreen() {
       notes: '',
     })),
     electrical_equipment_list: '',
+    building_consent_inspection: false,
+    inspection_notes: '',
+    inspection_result: '' as '' | 'approved' | 'pending' | 'reinspection',
+    evidence_received: false,
+    evidence_date: '',
+    evidence_signature: '',
+    evidence_signature_type: 'typed' as 'drawn' | 'typed',
     site_photos: [],
     staff_print_name: '',
     signature_data: '',
@@ -225,7 +240,7 @@ export default function FormScreen() {
     declaration_date: todayString,
   });
 
-  const steps = ['Site Info', 'Hazards', 'Safety', 'Photos', 'Declare'];
+  const steps = ['Site Info', 'Hazards', 'Safety', 'Inspection', 'Photos', 'Declare'];
 
   const updateField = (field: keyof FormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -593,7 +608,7 @@ export default function FormScreen() {
           return false;
         }
         break;
-      case 4: // Declaration step
+      case 5: // Declaration step
         if (!formData.staff_print_name) {
           Alert.alert('Required Fields', 'Please enter your printed name');
           return false;
@@ -1110,6 +1125,183 @@ export default function FormScreen() {
     </ScrollView>
   );
 
+  const renderInspectionStep = () => (
+    <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
+      {/* Main tick box */}
+      <TouchableOpacity
+        style={styles.inspectionToggle}
+        onPress={() => updateField('building_consent_inspection', !formData.building_consent_inspection)}
+      >
+        <View style={[
+          styles.purposeCheckbox,
+          { width: 30, height: 30 },
+          formData.building_consent_inspection && styles.purposeCheckboxActive,
+        ]}>
+          {formData.building_consent_inspection && (
+            <Ionicons name="checkmark" size={20} color="#fff" />
+          )}
+        </View>
+        <Text style={styles.inspectionToggleText}>Building Consent Requirement Inspection</Text>
+      </TouchableOpacity>
+
+      {formData.building_consent_inspection && (
+        <View style={styles.inspectionContent}>
+          {/* Inspection Notes */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Inspection Notes</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              value={formData.inspection_notes}
+              onChangeText={(text) => updateField('inspection_notes', text)}
+              placeholder="Enter inspection notes..."
+              multiline
+              numberOfLines={4}
+            />
+          </View>
+
+          {/* Inspection Result Selector */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Inspection Result</Text>
+            
+            {/* Approved */}
+            <TouchableOpacity
+              style={[
+                styles.inspectionOption,
+                formData.inspection_result === 'approved' && styles.inspectionApproved,
+              ]}
+              onPress={() => updateField('inspection_result', 'approved')}
+            >
+              <View style={[
+                styles.inspectionRadio,
+                formData.inspection_result === 'approved' && { borderColor: '#4CAF50', backgroundColor: '#4CAF50' },
+              ]}>
+                {formData.inspection_result === 'approved' && (
+                  <View style={styles.inspectionRadioDot} />
+                )}
+              </View>
+              <Text style={[
+                styles.inspectionOptionText,
+                formData.inspection_result === 'approved' && { fontWeight: '700', color: '#2E7D32' },
+              ]}>
+                Inspection Approved - OK to proceed
+              </Text>
+              {formData.inspection_result === 'approved' && (
+                <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
+              )}
+            </TouchableOpacity>
+
+            {/* Pending */}
+            <TouchableOpacity
+              style={[
+                styles.inspectionOption,
+                formData.inspection_result === 'pending' && styles.inspectionPending,
+              ]}
+              onPress={() => updateField('inspection_result', 'pending')}
+            >
+              <View style={[
+                styles.inspectionRadio,
+                formData.inspection_result === 'pending' && { borderColor: '#FF9800', backgroundColor: '#FF9800' },
+              ]}>
+                {formData.inspection_result === 'pending' && (
+                  <View style={styles.inspectionRadioDot} />
+                )}
+              </View>
+              <Text style={[
+                styles.inspectionOptionText,
+                formData.inspection_result === 'pending' && { fontWeight: '700', color: '#E65100' },
+              ]}>
+                Inspection Approval pending completion of above
+              </Text>
+              {formData.inspection_result === 'pending' && (
+                <Ionicons name="warning" size={24} color="#FF9800" />
+              )}
+            </TouchableOpacity>
+
+            {/* Pending sub-fields */}
+            {formData.inspection_result === 'pending' && (
+              <View style={styles.pendingSubFields}>
+                <TouchableOpacity
+                  style={styles.evidenceRow}
+                  onPress={() => updateField('evidence_received', !formData.evidence_received)}
+                >
+                  <View style={[
+                    styles.purposeCheckbox,
+                    formData.evidence_received && { backgroundColor: '#FF9800', borderColor: '#FF9800' },
+                  ]}>
+                    {formData.evidence_received && (
+                      <Ionicons name="checkmark" size={16} color="#fff" />
+                    )}
+                  </View>
+                  <Text style={styles.evidenceText}>Evidence of work completion received</Text>
+                </TouchableOpacity>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Date</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={formData.evidence_date}
+                    onChangeText={(text) => updateField('evidence_date', text)}
+                    placeholder="DD/MM/YYYY"
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Signature</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={formData.evidence_signature}
+                    onChangeText={(text) => {
+                      updateField('evidence_signature', text);
+                      updateField('evidence_signature_type', 'typed');
+                    }}
+                    placeholder="Type name as signature"
+                  />
+                </View>
+              </View>
+            )}
+
+            {/* Reinspection Required */}
+            <TouchableOpacity
+              style={[
+                styles.inspectionOption,
+                formData.inspection_result === 'reinspection' && styles.inspectionReinspection,
+              ]}
+              onPress={() => updateField('inspection_result', 'reinspection')}
+            >
+              <View style={[
+                styles.inspectionRadio,
+                formData.inspection_result === 'reinspection' && { borderColor: '#F44336', backgroundColor: '#F44336' },
+              ]}>
+                {formData.inspection_result === 'reinspection' && (
+                  <View style={styles.inspectionRadioDot} />
+                )}
+              </View>
+              <Text style={[
+                styles.inspectionOptionText,
+                formData.inspection_result === 'reinspection' && { fontWeight: '700', color: '#C62828' },
+              ]}>
+                Reinspection required
+              </Text>
+              {formData.inspection_result === 'reinspection' && (
+                <Ionicons name="alert-circle" size={24} color="#F44336" />
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {!formData.building_consent_inspection && (
+        <View style={styles.inspectionDisabled}>
+          <Ionicons name="information-circle-outline" size={24} color="#999" />
+          <Text style={styles.inspectionDisabledText}>
+            Tick the box above if this visit includes a building consent inspection
+          </Text>
+        </View>
+      )}
+      <View style={{ height: 100 }} />
+    </ScrollView>
+  );
+
   const renderPhotosStep = () => (
     <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
       <View style={styles.photoHeader}>
@@ -1300,8 +1492,9 @@ export default function FormScreen() {
       case 0: return renderSiteInfoStep();
       case 1: return renderHazardsStep();
       case 2: return renderSafetyStep();
-      case 3: return renderPhotosStep();
-      case 4: return renderDeclarationStep();
+      case 3: return renderInspectionStep();
+      case 4: return renderPhotosStep();
+      case 5: return renderDeclarationStep();
       default: return null;
     }
   };
@@ -1865,6 +2058,105 @@ const styles = StyleSheet.create({
   purposeText: {
     fontSize: 14,
     color: '#333',
+    flex: 1,
+  },
+  inspectionToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#4CAF50',
+    marginBottom: 16,
+  },
+  inspectionToggleText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#333',
+    flex: 1,
+    marginLeft: 12,
+  },
+  inspectionContent: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  inspectionOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+    marginBottom: 10,
+    backgroundColor: '#fff',
+  },
+  inspectionApproved: {
+    borderColor: '#4CAF50',
+    backgroundColor: '#E8F5E9',
+  },
+  inspectionPending: {
+    borderColor: '#FF9800',
+    backgroundColor: '#FFF3E0',
+  },
+  inspectionReinspection: {
+    borderColor: '#F44336',
+    backgroundColor: '#FFEBEE',
+  },
+  inspectionRadio: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#ccc',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  inspectionRadioDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#fff',
+  },
+  inspectionOptionText: {
+    fontSize: 14,
+    color: '#333',
+    flex: 1,
+  },
+  pendingSubFields: {
+    backgroundColor: '#FFF8E1',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#FFE0B2',
+  },
+  evidenceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  evidenceText: {
+    fontSize: 14,
+    color: '#333',
+    marginLeft: 12,
+    flex: 1,
+  },
+  inspectionDisabled: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    gap: 12,
+  },
+  inspectionDisabledText: {
+    fontSize: 14,
+    color: '#999',
     flex: 1,
   },
   optionButton: {
