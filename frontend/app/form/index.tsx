@@ -1497,7 +1497,12 @@ export default function FormScreen() {
     </ScrollView>
   );
 
-  const renderDeclarationStep = () => (
+  const renderDeclarationStep = () => {
+    // Auto-fill staff print name from the staff member selected at start
+    if (!formData.staff_print_name && formData.staff_members) {
+      updateField('staff_print_name', formData.staff_members);
+    }
+    return (
     <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
       <View style={styles.declarationBox}>
         <Text style={styles.declarationText}>
@@ -1600,6 +1605,7 @@ export default function FormScreen() {
       <View style={{ height: 100 }} />
     </ScrollView>
   );
+  };
 
   const renderCurrentStep = () => {
     switch (currentStep) {
