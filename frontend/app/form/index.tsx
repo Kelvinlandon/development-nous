@@ -1522,10 +1522,9 @@ export default function FormScreen() {
 
       <View style={styles.inputGroup}>
         <Text style={styles.label}>Staff Member (Print Name) *</Text>
-        {/* Staff picker from step 1 selections */}
-        {selectedStaff.length > 0 ? (
+        {formData.staff_members ? (
           <View>
-            {selectedStaff.map((name) => (
+            {formData.staff_members.split(',').map((name) => name.trim()).filter(Boolean).map((name) => (
               <TouchableOpacity
                 key={name}
                 style={[
