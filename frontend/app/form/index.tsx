@@ -676,7 +676,12 @@ export default function FormScreen() {
 
   const nextStep = () => {
     if (validateStep()) {
-      setCurrentStep(prev => Math.min(prev + 1, steps.length - 1));
+      const nextIdx = Math.min(currentStep + 1, steps.length - 1);
+      // Auto-fill declaration name from staff members when reaching Declaration step
+      if (nextIdx === 5 && !formData.staff_print_name && formData.staff_members) {
+        setFormData(prev => ({ ...prev, staff_print_name: prev.staff_members }));
+      }
+      setCurrentStep(nextIdx);
     }
   };
 
@@ -1498,10 +1503,6 @@ export default function FormScreen() {
   );
 
   const renderDeclarationStep = () => {
-    // Auto-fill staff print name from the staff member selected at start
-    if (!formData.staff_print_name && formData.staff_members) {
-      updateField('staff_print_name', formData.staff_members);
-    }
     return (
     <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
       <View style={styles.declarationBox}>
