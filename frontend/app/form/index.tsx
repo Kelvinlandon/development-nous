@@ -1519,7 +1519,8 @@ export default function FormScreen() {
           style={styles.input}
           value={formData.staff_print_name}
           onChangeText={(text) => updateField('staff_print_name', text)}
-          placeholder="Your full name"
+          placeholder="Auto-filled from staff selection"
+          placeholderTextColor="#ccc"
         />
       </View>
 
