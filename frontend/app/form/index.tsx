@@ -26,7 +26,7 @@ import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/dat
 
 const API_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || 
   process.env.EXPO_PUBLIC_BACKEND_URL || 
-  'https://safetypaws-reports.preview.emergentagent.com';
+  'https://site-report-app-4.preview.emergentagent.com';
 
 const SAFETY_CHECKLIST_QUESTIONS = [
   'Is an Accident/Incident/Hazard Report required?',
@@ -100,12 +100,20 @@ interface FormData {
   electrical_equipment_list: string;
   // Building Consent Inspection
   building_consent_inspection: boolean;
+  inspection_type: string;
   inspection_notes: string;
   inspection_result: '' | 'approved' | 'pending' | 'reinspection';
   evidence_received: boolean;
   evidence_date: string;
   evidence_signature: string;
   evidence_signature_type: 'drawn' | 'typed';
+  // Timber Pile fields
+  timber_bearing_capacity: string;
+  timber_pile_layout_as_per_plan: string;
+  timber_hole_diameter: string;
+  timber_hole_depth: string;
+  timber_anchor_piles_as_per_plan: string;
+  timber_bearers_as_per_documentation: string;
   // Photos
   site_photos: SitePhoto[];
   // Declaration
@@ -291,12 +299,19 @@ export default function FormScreen() {
     })),
     electrical_equipment_list: '',
     building_consent_inspection: false,
+    inspection_type: '',
     inspection_notes: '',
     inspection_result: '' as '' | 'approved' | 'pending' | 'reinspection',
     evidence_received: false,
     evidence_date: '',
     evidence_signature: '',
     evidence_signature_type: 'typed' as 'drawn' | 'typed',
+    timber_bearing_capacity: '',
+    timber_pile_layout_as_per_plan: '',
+    timber_hole_diameter: '',
+    timber_hole_depth: '',
+    timber_anchor_piles_as_per_plan: '',
+    timber_bearers_as_per_documentation: '',
     site_photos: [],
     staff_print_name: '',
     signature_data: '',
@@ -1272,6 +1287,191 @@ export default function FormScreen() {
 
       {formData.building_consent_inspection && (
         <View style={styles.inspectionContent}>
+          {/* Inspection Type */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Inspection Type</Text>
+            <TouchableOpacity
+              style={[
+                styles.inspectionOption,
+                formData.inspection_type === 'cupolex' && styles.inspectionApproved,
+              ]}
+              onPress={() => updateField('inspection_type', 'cupolex')}
+            >
+              <View style={[
+                styles.inspectionRadio,
+                formData.inspection_type === 'cupolex' && { borderColor: '#4CAF50', backgroundColor: '#4CAF50' },
+              ]}>
+                {formData.inspection_type === 'cupolex' && <View style={styles.inspectionRadioDot} />}
+              </View>
+              <Text style={[
+                styles.inspectionOptionText,
+                formData.inspection_type === 'cupolex' && { fontWeight: '700', color: '#2E7D32' },
+              ]}>Cupolex Slab Inspection</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.inspectionOption,
+                formData.inspection_type === 'timber_pile' && styles.inspectionApproved,
+              ]}
+              onPress={() => updateField('inspection_type', 'timber_pile')}
+            >
+              <View style={[
+                styles.inspectionRadio,
+                formData.inspection_type === 'timber_pile' && { borderColor: '#4CAF50', backgroundColor: '#4CAF50' },
+              ]}>
+                {formData.inspection_type === 'timber_pile' && <View style={styles.inspectionRadioDot} />}
+              </View>
+              <Text style={[
+                styles.inspectionOptionText,
+                formData.inspection_type === 'timber_pile' && { fontWeight: '700', color: '#2E7D32' },
+              ]}>Timber Pile Inspection</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Timber Pile Sub-fields */}
+          {formData.inspection_type === 'timber_pile' && (
+            <View style={styles.pendingSubFields}>
+              <Text style={[styles.label, { fontSize: 15, fontWeight: '700', marginBottom: 12, color: '#2E7D32' }]}>Timber Pile Details</Text>
+              
+              {/* Bearing Capacity */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Bearing Capacity</Text>
+                {['> 200 kPa', '> 300 kPa'].map((opt) => (
+                  <TouchableOpacity
+                    key={opt}
+                    style={[
+                      styles.inspectionOption,
+                      formData.timber_bearing_capacity === opt && styles.inspectionApproved,
+                    ]}
+                    onPress={() => updateField('timber_bearing_capacity', opt)}
+                  >
+                    <View style={[
+                      styles.inspectionRadio,
+                      formData.timber_bearing_capacity === opt && { borderColor: '#4CAF50', backgroundColor: '#4CAF50' },
+                    ]}>
+                      {formData.timber_bearing_capacity === opt && <View style={styles.inspectionRadioDot} />}
+                    </View>
+                    <Text style={[
+                      styles.inspectionOptionText,
+                      formData.timber_bearing_capacity === opt && { fontWeight: '700', color: '#2E7D32' },
+                    ]}>{opt}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Pile layout as per plan */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Pile layout as per plan?</Text>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  {['Yes', 'No'].map((opt) => (
+                    <TouchableOpacity
+                      key={opt}
+                      style={[
+                        styles.optionButton, { flex: 1, paddingVertical: 12 },
+                        formData.timber_pile_layout_as_per_plan === opt && styles.optionButtonActive,
+                      ]}
+                      onPress={() => updateField('timber_pile_layout_as_per_plan', opt)}
+                    >
+                      <Text style={[
+                        styles.optionText,
+                        formData.timber_pile_layout_as_per_plan === opt && styles.optionTextActive,
+                      ]}>{opt}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Hole Diameter */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Hole Diameter (mm)</Text>
+                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                  {['400', '450', '500', '600'].map((size) => (
+                    <TouchableOpacity
+                      key={size}
+                      style={[
+                        styles.optionButton, { paddingHorizontal: 20, paddingVertical: 12 },
+                        formData.timber_hole_diameter === size && styles.optionButtonActive,
+                      ]}
+                      onPress={() => updateField('timber_hole_diameter', size)}
+                    >
+                      <Text style={[
+                        styles.optionText,
+                        formData.timber_hole_diameter === size && styles.optionTextActive,
+                      ]}>{size}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Hole Depth */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Hole Depth (mm)</Text>
+                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                  {['400','450','500','600','700','800','900','1000','1100','1200','1300','1400','1500','1600'].map((depth) => (
+                    <TouchableOpacity
+                      key={depth}
+                      style={[
+                        styles.optionButton, { paddingHorizontal: 14, paddingVertical: 10, minWidth: 60 },
+                        formData.timber_hole_depth === depth && styles.optionButtonActive,
+                      ]}
+                      onPress={() => updateField('timber_hole_depth', depth)}
+                    >
+                      <Text style={[
+                        styles.optionText, { fontSize: 13 },
+                        formData.timber_hole_depth === depth && styles.optionTextActive,
+                      ]}>{depth}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Anchor piles as per plan */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Anchor piles provided as per plan?</Text>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  {['Yes', 'No'].map((opt) => (
+                    <TouchableOpacity
+                      key={opt}
+                      style={[
+                        styles.optionButton, { flex: 1, paddingVertical: 12 },
+                        formData.timber_anchor_piles_as_per_plan === opt && styles.optionButtonActive,
+                      ]}
+                      onPress={() => updateField('timber_anchor_piles_as_per_plan', opt)}
+                    >
+                      <Text style={[
+                        styles.optionText,
+                        formData.timber_anchor_piles_as_per_plan === opt && styles.optionTextActive,
+                      ]}>{opt}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Bearers as per documentation */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Bearers as per documentation?</Text>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  {['Yes', 'No'].map((opt) => (
+                    <TouchableOpacity
+                      key={opt}
+                      style={[
+                        styles.optionButton, { flex: 1, paddingVertical: 12 },
+                        formData.timber_bearers_as_per_documentation === opt && styles.optionButtonActive,
+                      ]}
+                      onPress={() => updateField('timber_bearers_as_per_documentation', opt)}
+                    >
+                      <Text style={[
+                        styles.optionText,
+                        formData.timber_bearers_as_per_documentation === opt && styles.optionTextActive,
+                      ]}>{opt}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </View>
+          )}
+
           {/* Inspection Notes */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Inspection Notes</Text>

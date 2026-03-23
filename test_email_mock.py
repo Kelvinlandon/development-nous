@@ -6,7 +6,7 @@ Test email functionality specifically to debug mock vs real email sending
 import requests
 import json
 
-BACKEND_URL = "https://safetypaws-reports.preview.emergentagent.com/api"
+BACKEND_URL = "https://site-report-app-4.preview.emergentagent.com/api"
 
 def test_settings_reset_and_email():
     """Reset settings to disable SMTP and test mock email"""

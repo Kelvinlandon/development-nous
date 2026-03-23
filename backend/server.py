@@ -105,12 +105,20 @@ class SiteVisitReport(BaseModel):
     electrical_equipment_list: Optional[str] = None
     # Building Consent Inspection
     building_consent_inspection: bool = False
+    inspection_type: Optional[str] = None  # "cupolex" or "timber_pile"
     inspection_notes: Optional[str] = None
     inspection_result: Optional[str] = None  # "approved", "pending", "reinspection"
     evidence_received: bool = False
     evidence_date: Optional[str] = None
     evidence_signature: Optional[str] = None
     evidence_signature_type: Optional[str] = None
+    # Timber Pile fields
+    timber_bearing_capacity: Optional[str] = None
+    timber_pile_layout_as_per_plan: Optional[str] = None
+    timber_hole_diameter: Optional[str] = None
+    timber_hole_depth: Optional[str] = None
+    timber_anchor_piles_as_per_plan: Optional[str] = None
+    timber_bearers_as_per_documentation: Optional[str] = None
     # Site Photos
     site_photos: List[SitePhoto] = []
     # Declaration
@@ -149,12 +157,19 @@ class SiteVisitReportCreate(BaseModel):
     safety_checklist: List[SafetyChecklistItem]
     electrical_equipment_list: Optional[str] = None
     building_consent_inspection: bool = False
+    inspection_type: Optional[str] = None
     inspection_notes: Optional[str] = None
     inspection_result: Optional[str] = None
     evidence_received: bool = False
     evidence_date: Optional[str] = None
     evidence_signature: Optional[str] = None
     evidence_signature_type: Optional[str] = None
+    timber_bearing_capacity: Optional[str] = None
+    timber_pile_layout_as_per_plan: Optional[str] = None
+    timber_hole_diameter: Optional[str] = None
+    timber_hole_depth: Optional[str] = None
+    timber_anchor_piles_as_per_plan: Optional[str] = None
+    timber_bearers_as_per_documentation: Optional[str] = None
     site_photos: List[SitePhotoCreate] = []
     staff_print_name: str
     signature_data: str
@@ -518,6 +533,46 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
         story.append(Spacer(1, 8))
         story.append(Paragraph("Building Consent Requirement Inspection", section_style))
         story.append(Spacer(1, 4))
+        
+        # Inspection type
+        insp_type = "Cupolex Slab Inspection" if report.inspection_type == "cupolex" else "Timber Pile Inspection" if report.inspection_type == "timber_pile" else "Not specified"
+        type_data = [[Paragraph("<b>Inspection Type</b>", small_style)], [Paragraph(insp_type, normal_style)]]
+        type_table = Table(type_data, colWidths=[440])
+        type_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), LIGHT_GREEN),
+            ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),
+        ]))
+        story.append(type_table)
+        story.append(Spacer(1, 4))
+        
+        # Timber pile details
+        if report.inspection_type == "timber_pile":
+            timber_data = [
+                [Paragraph("<b>Item</b>", ParagraphStyle('TH', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold')),
+                 Paragraph("<b>Value</b>", ParagraphStyle('TH2', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold'))],
+                [Paragraph("Bearing Capacity", normal_style), Paragraph(report.timber_bearing_capacity or "-", normal_style)],
+                [Paragraph("Pile Layout as per Plan", normal_style), Paragraph(report.timber_pile_layout_as_per_plan or "-", normal_style)],
+                [Paragraph("Hole Diameter", normal_style), Paragraph(f"{report.timber_hole_diameter} mm" if report.timber_hole_diameter else "-", normal_style)],
+                [Paragraph("Hole Depth", normal_style), Paragraph(f"{report.timber_hole_depth} mm" if report.timber_hole_depth else "-", normal_style)],
+                [Paragraph("Anchor Piles as per Plan", normal_style), Paragraph(report.timber_anchor_piles_as_per_plan or "-", normal_style)],
+                [Paragraph("Bearers as per Documentation", normal_style), Paragraph(report.timber_bearers_as_per_documentation or "-", normal_style)],
+            ]
+            timber_table = Table(timber_data, colWidths=[220, 220])
+            timber_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), DARK_GREEN),
+                ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#c8e6c9')),
+                ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('TOPPADDING', (0, 0), (-1, -1), 4),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, colors.HexColor('#f8fdf8')]),
+            ]))
+            story.append(timber_table)
+            story.append(Spacer(1, 4))
         
         if report.inspection_notes:
             notes_data = [[Paragraph("<b>Inspection Notes</b>", small_style)], [Paragraph(report.inspection_notes, normal_style)]]

@@ -5,7 +5,7 @@ Test HTML email generation functionality specifically
 
 import requests
 
-BACKEND_URL = "https://safetypaws-reports.preview.emergentagent.com/api"
+BACKEND_URL = "https://site-report-app-4.preview.emergentagent.com/api"
 
 def test_email_html_content():
     """Test that email contains proper HTML content by inspecting mock response"""

@@ -12,7 +12,7 @@ import os
 import sys
 
 # Get backend URL from frontend .env
-BACKEND_URL = "https://safetypaws-reports.preview.emergentagent.com/api"
+BACKEND_URL = "https://site-report-app-4.preview.emergentagent.com/api"
 
 def print_test_header(test_name):
     print(f"\n{'='*60}")
