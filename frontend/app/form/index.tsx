@@ -159,6 +159,18 @@ export default function FormScreen() {
     fetchStaffAndJobs();
   }, []);
 
+  // Auto-fill declaration name when reaching Declaration step
+  useEffect(() => {
+    if (currentStep === 5 && formData.staff_members) {
+      setFormData(prev => ({
+        ...prev,
+        staff_print_name: prev.staff_members,
+        declaration_date: prev.declaration_date || new Date().toISOString().split('T')[0],
+      }));
+    }
+  }, [currentStep]);
+
+
   const fetchStaffAndJobs = async () => {
     try {
       const [staffRes, jobsRes] = await Promise.all([
@@ -676,12 +688,7 @@ export default function FormScreen() {
 
   const nextStep = () => {
     if (validateStep()) {
-      const nextIdx = Math.min(currentStep + 1, steps.length - 1);
-      // Auto-fill declaration name from staff members when reaching Declaration step
-      if (nextIdx === 5 && !formData.staff_print_name && formData.staff_members) {
-        setFormData(prev => ({ ...prev, staff_print_name: prev.staff_members }));
-      }
-      setCurrentStep(nextIdx);
+      setCurrentStep(prev => Math.min(prev + 1, steps.length - 1));
     }
   };
 
