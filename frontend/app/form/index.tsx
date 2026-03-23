@@ -1522,13 +1522,43 @@ export default function FormScreen() {
 
       <View style={styles.inputGroup}>
         <Text style={styles.label}>Staff Member (Print Name) *</Text>
-        <TextInput
-          style={styles.input}
-          value={formData.staff_print_name}
-          onChangeText={(text) => updateField('staff_print_name', text)}
-          placeholder="Auto-filled from staff selection"
-          placeholderTextColor="#ccc"
-        />
+        {/* Staff picker from step 1 selections */}
+        {selectedStaff.length > 0 ? (
+          <View>
+            {selectedStaff.map((name) => (
+              <TouchableOpacity
+                key={name}
+                style={[
+                  styles.inspectionOption,
+                  formData.staff_print_name === name && styles.inspectionApproved,
+                ]}
+                onPress={() => updateField('staff_print_name', name)}
+              >
+                <View style={[
+                  styles.inspectionRadio,
+                  formData.staff_print_name === name && { borderColor: '#4CAF50', backgroundColor: '#4CAF50' },
+                ]}>
+                  {formData.staff_print_name === name && (
+                    <View style={styles.inspectionRadioDot} />
+                  )}
+                </View>
+                <Text style={[
+                  styles.inspectionOptionText,
+                  formData.staff_print_name === name && { fontWeight: '700', color: '#2E7D32' },
+                ]}>
+                  {name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : (
+          <TextInput
+            style={styles.input}
+            value={formData.staff_print_name}
+            onChangeText={(text) => updateField('staff_print_name', text)}
+            placeholder="Enter your name"
+          />
+        )}
       </View>
 
       <View style={styles.inputGroup}>
