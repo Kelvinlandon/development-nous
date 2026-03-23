@@ -33,6 +33,7 @@ interface Settings {
   company_name: string;
   staff_csv_url: string;
   jobs_csv_url: string;
+  inspection_items_csv_url: string;
   report_frequency: string;
   report_recipient_email: string;
 }
@@ -49,6 +50,7 @@ export default function SettingsScreen() {
     company_name: 'Development Nous Limited',
     staff_csv_url: 'https://docs.google.com/spreadsheets/d/1IXIYNCBUyP1OHn5sjci-sn2DWq_x1XJiMvgq1YfKz9Y/edit?gid=0#gid=0',
     jobs_csv_url: 'https://docs.google.com/spreadsheets/d/1xIpraMOCkGG4MUC3CnQ6o7BhyDbHZ0JzKobt7YlPQgw/edit?gid=0#gid=0',
+    inspection_items_csv_url: '',
     report_frequency: 'manual',
     report_recipient_email: '',
   });
@@ -97,16 +99,31 @@ export default function SettingsScreen() {
       // First save settings to ensure URLs are stored
       await axios.put(`${API_URL}/api/settings`, settings);
       
-      // Then trigger sync
+      // Then trigger sync for staff & jobs
       const response = await axios.post(`${API_URL}/api/sync`);
+      
+      // Also sync inspection items if URL is set
+      let inspMsg = '';
+      if (settings.inspection_items_csv_url) {
+        try {
+          const inspResponse = await axios.post(`${API_URL}/api/sync-inspection-items`);
+          if (inspResponse.data.success) {
+            inspMsg = `\n${inspResponse.data.count} inspection items`;
+          } else {
+            inspMsg = `\nInspection items: ${inspResponse.data.message}`;
+          }
+        } catch (err) {
+          inspMsg = '\nFailed to sync inspection items';
+        }
+      }
       
       if (response.data.success) {
         Alert.alert(
           'Sync Complete', 
-          `Synced ${response.data.staff_count} staff members and ${response.data.jobs_count} jobs`
+          `Synced ${response.data.staff_count} staff members and ${response.data.jobs_count} jobs${inspMsg}`
         );
       } else {
-        Alert.alert('Sync Issue', response.data.message);
+        Alert.alert('Sync Issue', response.data.message + inspMsg);
       }
     } catch (error) {
       console.error('Error syncing:', error);
@@ -334,6 +351,24 @@ export default function SettingsScreen() {
               />
               <Text style={styles.hint}>
                 Column A = Job Number, Column B = Job Name
+              </Text>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Inspection Items Spreadsheet URL</Text>
+              <TextInput
+                style={styles.input}
+                value={settings.inspection_items_csv_url}
+                onChangeText={(text) =>
+                  setSettings({ ...settings, inspection_items_csv_url: text })
+                }
+                placeholder="https://docs.google.com/spreadsheets/d/..."
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <Text style={styles.hint}>
+                Columns: Inspection Type, Question, Answer Type, Options{'\n'}
+                Leave blank to use built-in defaults (Cupolex Slab + Timber Pile)
               </Text>
             </View>
 

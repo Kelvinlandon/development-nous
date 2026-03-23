@@ -170,12 +170,18 @@ export default function FormScreen() {
   const [newJobName, setNewJobName] = useState('');
   const [selectedStaff, setSelectedStaff] = useState<string[]>([]);
   
+  // Dynamic inspection items
+  const [inspectionTypes, setInspectionTypes] = useState<string[]>([]);
+  const [inspectionItems, setInspectionItems] = useState<Record<string, Array<{question: string, answer_type: string, options: string}>>>({});
+  const [inspectionResponses, setInspectionResponses] = useState<Record<string, {answer: string, detail: string}>>({});
+  
   const today = new Date();
   const todayString = today.toISOString().split('T')[0];
   
   // Fetch staff and jobs on mount
   useEffect(() => {
     fetchStaffAndJobs();
+    fetchInspectionItems();
   }, []);
 
   // Auto-fill declaration name when reaching Declaration step
@@ -201,6 +207,37 @@ export default function FormScreen() {
     } catch (error) {
       console.error('Error fetching staff/jobs:', error);
     }
+  };
+
+  const fetchInspectionItems = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/api/inspection-items`);
+      setInspectionTypes(response.data.types || []);
+      setInspectionItems(response.data.items || {});
+    } catch (error) {
+      console.error('Error fetching inspection items:', error);
+      // Will use defaults rendered by backend if fetch fails
+    }
+  };
+
+  const updateInspectionResponse = (question: string, answer: string, detail?: string) => {
+    setInspectionResponses(prev => ({
+      ...prev,
+      [question]: {
+        answer: answer,
+        detail: detail !== undefined ? detail : (prev[question]?.detail || ''),
+      }
+    }));
+  };
+
+  const updateInspectionDetail = (question: string, detail: string) => {
+    setInspectionResponses(prev => ({
+      ...prev,
+      [question]: {
+        answer: prev[question]?.answer || '',
+        detail: detail,
+      }
+    }));
   };
 
   const addNewStaff = async () => {
@@ -737,7 +774,20 @@ export default function FormScreen() {
     
     setSubmitting(true);
     try {
-      const response = await axios.post(`${API_URL}/api/reports`, formData);
+      // Build inspection_responses array from the dynamic state
+      const inspResponses = Object.entries(inspectionResponses).map(([question, resp]) => ({
+        question,
+        answer: resp.answer,
+        detail: resp.detail || null,
+        answer_type: (inspectionItems[formData.inspection_type] || []).find(i => i.question === question)?.answer_type || 'yes_no',
+      }));
+      
+      const submitData = {
+        ...formData,
+        inspection_responses: inspResponses,
+      };
+      
+      const response = await axios.post(`${API_URL}/api/reports`, submitData);
       Alert.alert(
         'Success',
         'Report created successfully. Would you like to send it via email?',
@@ -1287,6 +1337,121 @@ export default function FormScreen() {
     </ScrollView>
   );
 
+  const renderDynamicInspectionItem = (item: {question: string, answer_type: string, options: string}, index: number) => {
+    const resp = inspectionResponses[item.question] || { answer: '', detail: '' };
+    const optionsList = item.options ? item.options.split(',').map(o => o.trim()).filter(o => o) : [];
+
+    if (item.answer_type === 'yes_no') {
+      return (
+        <View key={`insp-${index}`} style={styles.inputGroup}>
+          <Text style={styles.label}>{item.question}</Text>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            {['Yes', 'No'].map((opt) => (
+              <TouchableOpacity
+                key={opt}
+                style={[
+                  styles.optionButton, { flex: 1, paddingVertical: 12 },
+                  resp.answer === opt && styles.optionButtonActive,
+                ]}
+                onPress={() => updateInspectionResponse(item.question, opt)}
+              >
+                <Text style={[
+                  styles.optionText,
+                  resp.answer === opt && styles.optionTextActive,
+                ]}>{opt}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      );
+    }
+
+    if (item.answer_type === 'select') {
+      return (
+        <View key={`insp-${index}`} style={styles.inputGroup}>
+          <Text style={styles.label}>{item.question}</Text>
+          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+            {optionsList.map((opt) => (
+              <TouchableOpacity
+                key={opt}
+                style={[
+                  styles.optionButton, { paddingHorizontal: 16, paddingVertical: 12 },
+                  resp.answer === opt && styles.optionButtonActive,
+                ]}
+                onPress={() => updateInspectionResponse(item.question, opt)}
+              >
+                <Text style={[
+                  styles.optionText,
+                  resp.answer === opt && styles.optionTextActive,
+                ]}>{opt}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      );
+    }
+
+    if (item.answer_type === 'yes_no_select') {
+      return (
+        <View key={`insp-${index}`} style={styles.inputGroup}>
+          <Text style={styles.label}>{item.question}</Text>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            {['Yes', 'No'].map((opt) => (
+              <TouchableOpacity
+                key={opt}
+                style={[
+                  styles.optionButton, { flex: 1, paddingVertical: 12 },
+                  resp.answer === opt && styles.optionButtonActive,
+                ]}
+                onPress={() => updateInspectionResponse(item.question, opt)}
+              >
+                <Text style={[
+                  styles.optionText,
+                  resp.answer === opt && styles.optionTextActive,
+                ]}>{opt}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          {optionsList.length > 0 && (
+            <>
+              <Text style={[styles.label, { marginTop: 8, fontSize: 13 }]}>Type/Size</Text>
+              <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                {optionsList.map((opt) => (
+                  <TouchableOpacity
+                    key={opt}
+                    style={[
+                      styles.optionButton, { paddingHorizontal: 16, paddingVertical: 12 },
+                      resp.detail === opt && styles.optionButtonActive,
+                    ]}
+                    onPress={() => updateInspectionDetail(item.question, opt)}
+                  >
+                    <Text style={[
+                      styles.optionText,
+                      resp.detail === opt && styles.optionTextActive,
+                    ]}>{opt}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </>
+          )}
+        </View>
+      );
+    }
+
+    // Default: text input
+    return (
+      <View key={`insp-${index}`} style={styles.inputGroup}>
+        <Text style={styles.label}>{item.question}</Text>
+        <TextInput
+          style={styles.input}
+          value={resp.answer}
+          onChangeText={(text) => updateInspectionResponse(item.question, text)}
+          placeholder="Enter value..."
+        />
+      </View>
+    );
+  };
+
   const renderInspectionStep = () => (
     <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
       {/* Main tick box */}
@@ -1308,407 +1473,45 @@ export default function FormScreen() {
 
       {formData.building_consent_inspection && (
         <View style={styles.inspectionContent}>
-          {/* Inspection Type */}
+          {/* Dynamic Inspection Type Selector */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Inspection Type</Text>
-            <TouchableOpacity
-              style={[
-                styles.inspectionOption,
-                formData.inspection_type === 'cupolex' && styles.inspectionApproved,
-              ]}
-              onPress={() => updateField('inspection_type', 'cupolex')}
-            >
-              <View style={[
-                styles.inspectionRadio,
-                formData.inspection_type === 'cupolex' && { borderColor: '#4CAF50', backgroundColor: '#4CAF50' },
-              ]}>
-                {formData.inspection_type === 'cupolex' && <View style={styles.inspectionRadioDot} />}
-              </View>
-              <Text style={[
-                styles.inspectionOptionText,
-                formData.inspection_type === 'cupolex' && { fontWeight: '700', color: '#2E7D32' },
-              ]}>Cupolex Slab Inspection</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.inspectionOption,
-                formData.inspection_type === 'timber_pile' && styles.inspectionApproved,
-              ]}
-              onPress={() => updateField('inspection_type', 'timber_pile')}
-            >
-              <View style={[
-                styles.inspectionRadio,
-                formData.inspection_type === 'timber_pile' && { borderColor: '#4CAF50', backgroundColor: '#4CAF50' },
-              ]}>
-                {formData.inspection_type === 'timber_pile' && <View style={styles.inspectionRadioDot} />}
-              </View>
-              <Text style={[
-                styles.inspectionOptionText,
-                formData.inspection_type === 'timber_pile' && { fontWeight: '700', color: '#2E7D32' },
-              ]}>Timber Pile Inspection</Text>
-            </TouchableOpacity>
+            {inspectionTypes.map((typeName) => (
+              <TouchableOpacity
+                key={typeName}
+                style={[
+                  styles.inspectionOption,
+                  formData.inspection_type === typeName && styles.inspectionApproved,
+                ]}
+                onPress={() => {
+                  updateField('inspection_type', typeName);
+                  // Reset responses when switching type
+                  setInspectionResponses({});
+                }}
+              >
+                <View style={[
+                  styles.inspectionRadio,
+                  formData.inspection_type === typeName && { borderColor: '#4CAF50', backgroundColor: '#4CAF50' },
+                ]}>
+                  {formData.inspection_type === typeName && <View style={styles.inspectionRadioDot} />}
+                </View>
+                <Text style={[
+                  styles.inspectionOptionText,
+                  formData.inspection_type === typeName && { fontWeight: '700', color: '#2E7D32' },
+                ]}>{typeName}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
 
-          {/* Cupolex Slab Sub-fields */}
-          {formData.inspection_type === 'cupolex' && (
+          {/* Dynamic Inspection Sub-fields */}
+          {formData.inspection_type && inspectionItems[formData.inspection_type] && (
             <View style={styles.pendingSubFields}>
-              <Text style={[styles.label, { fontSize: 15, fontWeight: '700', marginBottom: 12, color: '#2E7D32' }]}>Cupolex Slab Details</Text>
-              
-              {/* Cupolex Hardware as per documentation */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Cupolex Hardware as per documentation?</Text>
-                <View style={{ flexDirection: 'row', gap: 10 }}>
-                  {['Yes', 'No'].map((opt) => (
-                    <TouchableOpacity
-                      key={opt}
-                      style={[
-                        styles.optionButton, { flex: 1, paddingVertical: 12 },
-                        formData.cupolex_hardware_as_per_docs === opt && styles.optionButtonActive,
-                      ]}
-                      onPress={() => updateField('cupolex_hardware_as_per_docs', opt)}
-                    >
-                      <Text style={[
-                        styles.optionText,
-                        formData.cupolex_hardware_as_per_docs === opt && styles.optionTextActive,
-                      ]}>{opt}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              {/* Reentrant corner detailing steel */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Reentrant corner detailing steel?</Text>
-                <View style={{ flexDirection: 'row', gap: 10 }}>
-                  {['Yes', 'No'].map((opt) => (
-                    <TouchableOpacity
-                      key={opt}
-                      style={[
-                        styles.optionButton, { flex: 1, paddingVertical: 12 },
-                        formData.cupolex_reentrant_corner_steel === opt && styles.optionButtonActive,
-                      ]}
-                      onPress={() => updateField('cupolex_reentrant_corner_steel', opt)}
-                    >
-                      <Text style={[
-                        styles.optionText,
-                        formData.cupolex_reentrant_corner_steel === opt && styles.optionTextActive,
-                      ]}>{opt}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              {/* Slab mesh steel as per approved BC docs */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Slab mesh steel as per approved BC docs?</Text>
-                <View style={{ flexDirection: 'row', gap: 10 }}>
-                  {['Yes', 'No'].map((opt) => (
-                    <TouchableOpacity
-                      key={opt}
-                      style={[
-                        styles.optionButton, { flex: 1, paddingVertical: 12 },
-                        formData.cupolex_slab_mesh_approved === opt && styles.optionButtonActive,
-                      ]}
-                      onPress={() => updateField('cupolex_slab_mesh_approved', opt)}
-                    >
-                      <Text style={[
-                        styles.optionText,
-                        formData.cupolex_slab_mesh_approved === opt && styles.optionTextActive,
-                      ]}>{opt}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                <Text style={[styles.label, { marginTop: 8 }]}>Mesh Type</Text>
-                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-                  {['SE62', 'SE72', 'SE82'].map((mesh) => (
-                    <TouchableOpacity
-                      key={mesh}
-                      style={[
-                        styles.optionButton, { paddingHorizontal: 20, paddingVertical: 12 },
-                        formData.cupolex_slab_mesh_type === mesh && styles.optionButtonActive,
-                      ]}
-                      onPress={() => updateField('cupolex_slab_mesh_type', mesh)}
-                    >
-                      <Text style={[
-                        styles.optionText,
-                        formData.cupolex_slab_mesh_type === mesh && styles.optionTextActive,
-                      ]}>{mesh}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              {/* Edge beam reinforcement as per approved BC docs */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Edge beam reinforcement as per approved BC docs?</Text>
-                <View style={{ flexDirection: 'row', gap: 10 }}>
-                  {['Yes', 'No'].map((opt) => (
-                    <TouchableOpacity
-                      key={opt}
-                      style={[
-                        styles.optionButton, { flex: 1, paddingVertical: 12 },
-                        formData.cupolex_edge_beam_approved === opt && styles.optionButtonActive,
-                      ]}
-                      onPress={() => updateField('cupolex_edge_beam_approved', opt)}
-                    >
-                      <Text style={[
-                        styles.optionText,
-                        formData.cupolex_edge_beam_approved === opt && styles.optionTextActive,
-                      ]}>{opt}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                <Text style={[styles.label, { marginTop: 8 }]}>Reinforcement Type</Text>
-                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-                  {['3 D12', '4 D12', '3 D16', '4 D16'].map((rtype) => (
-                    <TouchableOpacity
-                      key={rtype}
-                      style={[
-                        styles.optionButton, { paddingHorizontal: 16, paddingVertical: 12 },
-                        formData.cupolex_edge_beam_type === rtype && styles.optionButtonActive,
-                      ]}
-                      onPress={() => updateField('cupolex_edge_beam_type', rtype)}
-                    >
-                      <Text style={[
-                        styles.optionText,
-                        formData.cupolex_edge_beam_type === rtype && styles.optionTextActive,
-                      ]}>{rtype}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              {/* Penetration detailing steel correct */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Penetration detailing steel correct? (D12 steel)</Text>
-                <View style={{ flexDirection: 'row', gap: 10 }}>
-                  {['Yes', 'No'].map((opt) => (
-                    <TouchableOpacity
-                      key={opt}
-                      style={[
-                        styles.optionButton, { flex: 1, paddingVertical: 12 },
-                        formData.cupolex_penetration_detailing_correct === opt && styles.optionButtonActive,
-                      ]}
-                      onPress={() => updateField('cupolex_penetration_detailing_correct', opt)}
-                    >
-                      <Text style={[
-                        styles.optionText,
-                        formData.cupolex_penetration_detailing_correct === opt && styles.optionTextActive,
-                      ]}>{opt}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              {/* Shower step down detailing correct */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Shower step down detailing correct?</Text>
-                <View style={{ flexDirection: 'row', gap: 10 }}>
-                  {['Yes', 'No'].map((opt) => (
-                    <TouchableOpacity
-                      key={opt}
-                      style={[
-                        styles.optionButton, { flex: 1, paddingVertical: 12 },
-                        formData.cupolex_shower_step_down_correct === opt && styles.optionButtonActive,
-                      ]}
-                      onPress={() => updateField('cupolex_shower_step_down_correct', opt)}
-                    >
-                      <Text style={[
-                        styles.optionText,
-                        formData.cupolex_shower_step_down_correct === opt && styles.optionTextActive,
-                      ]}>{opt}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              {/* Concrete strength */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Concrete Strength</Text>
-                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-                  {['20 MPa', '25 MPa', '30 MPa', '32 MPa'].map((strength) => (
-                    <TouchableOpacity
-                      key={strength}
-                      style={[
-                        styles.optionButton, { paddingHorizontal: 16, paddingVertical: 12 },
-                        formData.cupolex_concrete_strength === strength && styles.optionButtonActive,
-                      ]}
-                      onPress={() => updateField('cupolex_concrete_strength', strength)}
-                    >
-                      <Text style={[
-                        styles.optionText,
-                        formData.cupolex_concrete_strength === strength && styles.optionTextActive,
-                      ]}>{strength}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              {/* Dramix fibre reinforcing required */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Dramix fibre reinforcing required?</Text>
-                <View style={{ flexDirection: 'row', gap: 10 }}>
-                  {['Yes', 'No'].map((opt) => (
-                    <TouchableOpacity
-                      key={opt}
-                      style={[
-                        styles.optionButton, { flex: 1, paddingVertical: 12 },
-                        formData.cupolex_dramix_fibre_required === opt && styles.optionButtonActive,
-                      ]}
-                      onPress={() => updateField('cupolex_dramix_fibre_required', opt)}
-                    >
-                      <Text style={[
-                        styles.optionText,
-                        formData.cupolex_dramix_fibre_required === opt && styles.optionTextActive,
-                      ]}>{opt}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            </View>
-          )}
-
-          {/* Timber Pile Sub-fields */}
-          {formData.inspection_type === 'timber_pile' && (
-            <View style={styles.pendingSubFields}>
-              <Text style={[styles.label, { fontSize: 15, fontWeight: '700', marginBottom: 12, color: '#2E7D32' }]}>Timber Pile Details</Text>
-              
-              {/* Bearing Capacity */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Bearing Capacity</Text>
-                {['> 200 kPa', '> 300 kPa'].map((opt) => (
-                  <TouchableOpacity
-                    key={opt}
-                    style={[
-                      styles.inspectionOption,
-                      formData.timber_bearing_capacity === opt && styles.inspectionApproved,
-                    ]}
-                    onPress={() => updateField('timber_bearing_capacity', opt)}
-                  >
-                    <View style={[
-                      styles.inspectionRadio,
-                      formData.timber_bearing_capacity === opt && { borderColor: '#4CAF50', backgroundColor: '#4CAF50' },
-                    ]}>
-                      {formData.timber_bearing_capacity === opt && <View style={styles.inspectionRadioDot} />}
-                    </View>
-                    <Text style={[
-                      styles.inspectionOptionText,
-                      formData.timber_bearing_capacity === opt && { fontWeight: '700', color: '#2E7D32' },
-                    ]}>{opt}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {/* Pile layout as per plan */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Pile layout as per plan?</Text>
-                <View style={{ flexDirection: 'row', gap: 10 }}>
-                  {['Yes', 'No'].map((opt) => (
-                    <TouchableOpacity
-                      key={opt}
-                      style={[
-                        styles.optionButton, { flex: 1, paddingVertical: 12 },
-                        formData.timber_pile_layout_as_per_plan === opt && styles.optionButtonActive,
-                      ]}
-                      onPress={() => updateField('timber_pile_layout_as_per_plan', opt)}
-                    >
-                      <Text style={[
-                        styles.optionText,
-                        formData.timber_pile_layout_as_per_plan === opt && styles.optionTextActive,
-                      ]}>{opt}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              {/* Hole Diameter */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Hole Diameter (mm)</Text>
-                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-                  {['400', '450', '500', '600'].map((size) => (
-                    <TouchableOpacity
-                      key={size}
-                      style={[
-                        styles.optionButton, { paddingHorizontal: 20, paddingVertical: 12 },
-                        formData.timber_hole_diameter === size && styles.optionButtonActive,
-                      ]}
-                      onPress={() => updateField('timber_hole_diameter', size)}
-                    >
-                      <Text style={[
-                        styles.optionText,
-                        formData.timber_hole_diameter === size && styles.optionTextActive,
-                      ]}>{size}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              {/* Hole Depth */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Hole Depth (mm)</Text>
-                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-                  {['400','450','500','600','700','800','900','1000','1100','1200','1300','1400','1500','1600'].map((depth) => (
-                    <TouchableOpacity
-                      key={depth}
-                      style={[
-                        styles.optionButton, { paddingHorizontal: 14, paddingVertical: 10, minWidth: 60 },
-                        formData.timber_hole_depth === depth && styles.optionButtonActive,
-                      ]}
-                      onPress={() => updateField('timber_hole_depth', depth)}
-                    >
-                      <Text style={[
-                        styles.optionText, { fontSize: 13 },
-                        formData.timber_hole_depth === depth && styles.optionTextActive,
-                      ]}>{depth}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              {/* Anchor piles as per plan */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Anchor piles provided as per plan?</Text>
-                <View style={{ flexDirection: 'row', gap: 10 }}>
-                  {['Yes', 'No'].map((opt) => (
-                    <TouchableOpacity
-                      key={opt}
-                      style={[
-                        styles.optionButton, { flex: 1, paddingVertical: 12 },
-                        formData.timber_anchor_piles_as_per_plan === opt && styles.optionButtonActive,
-                      ]}
-                      onPress={() => updateField('timber_anchor_piles_as_per_plan', opt)}
-                    >
-                      <Text style={[
-                        styles.optionText,
-                        formData.timber_anchor_piles_as_per_plan === opt && styles.optionTextActive,
-                      ]}>{opt}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              {/* Bearers as per documentation */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Bearers as per documentation?</Text>
-                <View style={{ flexDirection: 'row', gap: 10 }}>
-                  {['Yes', 'No'].map((opt) => (
-                    <TouchableOpacity
-                      key={opt}
-                      style={[
-                        styles.optionButton, { flex: 1, paddingVertical: 12 },
-                        formData.timber_bearers_as_per_documentation === opt && styles.optionButtonActive,
-                      ]}
-                      onPress={() => updateField('timber_bearers_as_per_documentation', opt)}
-                    >
-                      <Text style={[
-                        styles.optionText,
-                        formData.timber_bearers_as_per_documentation === opt && styles.optionTextActive,
-                      ]}>{opt}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
+              <Text style={[styles.label, { fontSize: 15, fontWeight: '700', marginBottom: 12, color: '#2E7D32' }]}>
+                {formData.inspection_type} Details
+              </Text>
+              {inspectionItems[formData.inspection_type].map((item, index) =>
+                renderDynamicInspectionItem(item, index)
+              )}
             </View>
           )}
 

@@ -32,6 +32,24 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
+# ================== Default Inspection Items ==================
+DEFAULT_INSPECTION_ITEMS = [
+    {"inspection_type": "Cupolex Slab", "question": "Cupolex Hardware as per documentation?", "answer_type": "yes_no", "options": ""},
+    {"inspection_type": "Cupolex Slab", "question": "Reentrant corner detailing steel?", "answer_type": "yes_no", "options": ""},
+    {"inspection_type": "Cupolex Slab", "question": "Slab mesh steel as per approved BC docs?", "answer_type": "yes_no_select", "options": "SE62, SE72, SE82"},
+    {"inspection_type": "Cupolex Slab", "question": "Edge beam reinforcement as per approved BC docs?", "answer_type": "yes_no_select", "options": "3 D12, 4 D12, 3 D16, 4 D16"},
+    {"inspection_type": "Cupolex Slab", "question": "Penetration detailing steel correct? (D12 steel)", "answer_type": "yes_no", "options": ""},
+    {"inspection_type": "Cupolex Slab", "question": "Shower step down detailing correct?", "answer_type": "yes_no", "options": ""},
+    {"inspection_type": "Cupolex Slab", "question": "Concrete Strength", "answer_type": "select", "options": "20 MPa, 25 MPa, 30 MPa, 32 MPa"},
+    {"inspection_type": "Cupolex Slab", "question": "Dramix fibre reinforcing required?", "answer_type": "yes_no", "options": ""},
+    {"inspection_type": "Timber Pile", "question": "Bearing Capacity", "answer_type": "select", "options": "> 200 kPa, > 300 kPa"},
+    {"inspection_type": "Timber Pile", "question": "Pile layout as per plan?", "answer_type": "yes_no", "options": ""},
+    {"inspection_type": "Timber Pile", "question": "Hole Diameter (mm)", "answer_type": "select", "options": "400, 450, 500, 600"},
+    {"inspection_type": "Timber Pile", "question": "Hole Depth (mm)", "answer_type": "select", "options": "400, 450, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600"},
+    {"inspection_type": "Timber Pile", "question": "Anchor piles provided as per plan?", "answer_type": "yes_no", "options": ""},
+    {"inspection_type": "Timber Pile", "question": "Bearers as per documentation?", "answer_type": "yes_no", "options": ""},
+]
+
 # Create the main app without a prefix
 app = FastAPI()
 
@@ -71,6 +89,12 @@ class SafetyChecklistItem(BaseModel):
     question: str
     answer: Optional[str] = None  # "yes", "no", "na"
     notes: Optional[str] = None
+
+class InspectionResponse(BaseModel):
+    question: str
+    answer: str = ""
+    detail: Optional[str] = None  # For yes_no_select: the selected option
+    answer_type: str = "yes_no"  # yes_no, select, yes_no_select, text
 
 class SitePhoto(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -130,6 +154,8 @@ class SiteVisitReport(BaseModel):
     cupolex_shower_step_down_correct: Optional[str] = None
     cupolex_concrete_strength: Optional[str] = None
     cupolex_dramix_fibre_required: Optional[str] = None
+    # Dynamic inspection responses (new system)
+    inspection_responses: List[InspectionResponse] = []
     # Site Photos
     site_photos: List[SitePhoto] = []
     # Declaration
@@ -191,6 +217,7 @@ class SiteVisitReportCreate(BaseModel):
     cupolex_shower_step_down_correct: Optional[str] = None
     cupolex_concrete_strength: Optional[str] = None
     cupolex_dramix_fibre_required: Optional[str] = None
+    inspection_responses: List[Dict[str, Any]] = []
     site_photos: List[SitePhotoCreate] = []
     staff_print_name: str
     signature_data: str
@@ -210,6 +237,7 @@ class AppSettings(BaseModel):
     # External data sync URLs
     staff_csv_url: str = "https://docs.google.com/spreadsheets/d/1IXIYNCBUyP1OHn5sjci-sn2DWq_x1XJiMvgq1YfKz9Y/edit?gid=0#gid=0"
     jobs_csv_url: str = "https://docs.google.com/spreadsheets/d/1xIpraMOCkGG4MUC3CnQ6o7BhyDbHZ0JzKobt7YlPQgw/edit?gid=0#gid=0"
+    inspection_items_csv_url: str = ""
     # Spreadsheet report frequency
     report_frequency: str = "manual"  # "manual", "daily", "weekly", "monthly"
     report_recipient_email: str = ""
@@ -227,6 +255,7 @@ class AppSettingsUpdate(BaseModel):
     company_name: Optional[str] = None
     staff_csv_url: Optional[str] = None
     jobs_csv_url: Optional[str] = None
+    inspection_items_csv_url: Optional[str] = None
     report_frequency: Optional[str] = None
     report_recipient_email: Optional[str] = None
 
@@ -555,79 +584,129 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
         story.append(Paragraph("Building Consent Requirement Inspection", section_style))
         story.append(Spacer(1, 4))
         
-        # Inspection type
-        insp_type = "Cupolex Slab Inspection" if report.inspection_type == "cupolex" else "Timber Pile Inspection" if report.inspection_type == "timber_pile" else "Not specified"
-        type_data = [[Paragraph("<b>Inspection Type</b>", small_style)], [Paragraph(insp_type, normal_style)]]
-        type_table = Table(type_data, colWidths=[440])
-        type_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), LIGHT_GREEN),
-            ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
-            ('TOPPADDING', (0, 0), (-1, -1), 5),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-            ('LEFTPADDING', (0, 0), (-1, -1), 8),
-        ]))
-        story.append(type_table)
-        story.append(Spacer(1, 4))
+        # Check if we have dynamic inspection_responses (new system)
+        has_dynamic = hasattr(report, 'inspection_responses') and report.inspection_responses and len(report.inspection_responses) > 0
         
-        # Timber pile details
-        if report.inspection_type == "timber_pile":
-            timber_data = [
-                [Paragraph("<b>Item</b>", ParagraphStyle('TH', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold')),
-                 Paragraph("<b>Value</b>", ParagraphStyle('TH2', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold'))],
-                [Paragraph("Bearing Capacity", normal_style), Paragraph(report.timber_bearing_capacity or "-", normal_style)],
-                [Paragraph("Pile Layout as per Plan", normal_style), Paragraph(report.timber_pile_layout_as_per_plan or "-", normal_style)],
-                [Paragraph("Hole Diameter", normal_style), Paragraph(f"{report.timber_hole_diameter} mm" if report.timber_hole_diameter else "-", normal_style)],
-                [Paragraph("Hole Depth", normal_style), Paragraph(f"{report.timber_hole_depth} mm" if report.timber_hole_depth else "-", normal_style)],
-                [Paragraph("Anchor Piles as per Plan", normal_style), Paragraph(report.timber_anchor_piles_as_per_plan or "-", normal_style)],
-                [Paragraph("Bearers as per Documentation", normal_style), Paragraph(report.timber_bearers_as_per_documentation or "-", normal_style)],
-            ]
-            timber_table = Table(timber_data, colWidths=[220, 220])
-            timber_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), DARK_GREEN),
-                ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#c8e6c9')),
-                ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('TOPPADDING', (0, 0), (-1, -1), 4),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-                ('LEFTPADDING', (0, 0), (-1, -1), 6),
-                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, colors.HexColor('#f8fdf8')]),
+        if has_dynamic:
+            # New dynamic system - render from inspection_responses
+            insp_type = report.inspection_type or "Not specified"
+            type_data = [[Paragraph("<b>Inspection Type</b>", small_style)], [Paragraph(insp_type, normal_style)]]
+            type_table = Table(type_data, colWidths=[440])
+            type_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), LIGHT_GREEN),
+                ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
+                ('TOPPADDING', (0, 0), (-1, -1), 5),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+                ('LEFTPADDING', (0, 0), (-1, -1), 8),
             ]))
-            story.append(timber_table)
+            story.append(type_table)
             story.append(Spacer(1, 4))
-        
-        # Cupolex slab details
-        if report.inspection_type == "cupolex":
-            mesh_val = f"{report.cupolex_slab_mesh_approved or '-'}"
-            if report.cupolex_slab_mesh_type:
-                mesh_val += f" ({report.cupolex_slab_mesh_type})"
-            edge_val = f"{report.cupolex_edge_beam_approved or '-'}"
-            if report.cupolex_edge_beam_type:
-                edge_val += f" ({report.cupolex_edge_beam_type})"
-            cupolex_data = [
-                [Paragraph("<b>Item</b>", ParagraphStyle('CTH', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold')),
-                 Paragraph("<b>Value</b>", ParagraphStyle('CTH2', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold'))],
-                [Paragraph("Cupolex Hardware as per Documentation", normal_style), Paragraph(report.cupolex_hardware_as_per_docs or "-", normal_style)],
-                [Paragraph("Reentrant Corner Detailing Steel", normal_style), Paragraph(report.cupolex_reentrant_corner_steel or "-", normal_style)],
-                [Paragraph("Slab Mesh Steel as per Approved BC Docs", normal_style), Paragraph(mesh_val, normal_style)],
-                [Paragraph("Edge Beam Reinforcement as per Approved BC Docs", normal_style), Paragraph(edge_val, normal_style)],
-                [Paragraph("Penetration Detailing Steel Correct (D12)", normal_style), Paragraph(report.cupolex_penetration_detailing_correct or "-", normal_style)],
-                [Paragraph("Shower Step Down Detailing Correct", normal_style), Paragraph(report.cupolex_shower_step_down_correct or "-", normal_style)],
-                [Paragraph("Concrete Strength", normal_style), Paragraph(report.cupolex_concrete_strength or "-", normal_style)],
-                [Paragraph("Dramix Fibre Reinforcing Required", normal_style), Paragraph(report.cupolex_dramix_fibre_required or "-", normal_style)],
+            
+            # Build table from dynamic responses
+            detail_data = [
+                [Paragraph("<b>Item</b>", ParagraphStyle('DTH', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold')),
+                 Paragraph("<b>Value</b>", ParagraphStyle('DTH2', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold'))],
             ]
-            cupolex_table = Table(cupolex_data, colWidths=[220, 220])
-            cupolex_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), DARK_GREEN),
-                ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#c8e6c9')),
-                ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('TOPPADDING', (0, 0), (-1, -1), 4),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-                ('LEFTPADDING', (0, 0), (-1, -1), 6),
-                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, colors.HexColor('#f8fdf8')]),
+            for resp in report.inspection_responses:
+                q = resp.get('question', '') if isinstance(resp, dict) else resp.question
+                a = resp.get('answer', '-') if isinstance(resp, dict) else resp.answer
+                d = resp.get('detail', '') if isinstance(resp, dict) else (resp.detail or '')
+                val = a or "-"
+                if d:
+                    val += f" ({d})"
+                detail_data.append([
+                    Paragraph(q, normal_style),
+                    Paragraph(val, normal_style),
+                ])
+            
+            if len(detail_data) > 1:
+                detail_table = Table(detail_data, colWidths=[220, 220])
+                detail_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), DARK_GREEN),
+                    ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#c8e6c9')),
+                    ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('TOPPADDING', (0, 0), (-1, -1), 4),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                    ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, colors.HexColor('#f8fdf8')]),
+                ]))
+                story.append(detail_table)
+                story.append(Spacer(1, 4))
+        else:
+            # Legacy system - render from individual fields
+            insp_type = "Cupolex Slab Inspection" if report.inspection_type == "cupolex" else "Timber Pile Inspection" if report.inspection_type == "timber_pile" else report.inspection_type or "Not specified"
+            type_data = [[Paragraph("<b>Inspection Type</b>", small_style)], [Paragraph(insp_type, normal_style)]]
+            type_table = Table(type_data, colWidths=[440])
+            type_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), LIGHT_GREEN),
+                ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
+                ('TOPPADDING', (0, 0), (-1, -1), 5),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+                ('LEFTPADDING', (0, 0), (-1, -1), 8),
             ]))
-            story.append(cupolex_table)
+            story.append(type_table)
             story.append(Spacer(1, 4))
+            
+            # Timber pile details (legacy)
+            if report.inspection_type == "timber_pile":
+                timber_data = [
+                    [Paragraph("<b>Item</b>", ParagraphStyle('TH', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold')),
+                     Paragraph("<b>Value</b>", ParagraphStyle('TH2', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold'))],
+                    [Paragraph("Bearing Capacity", normal_style), Paragraph(report.timber_bearing_capacity or "-", normal_style)],
+                    [Paragraph("Pile Layout as per Plan", normal_style), Paragraph(report.timber_pile_layout_as_per_plan or "-", normal_style)],
+                    [Paragraph("Hole Diameter", normal_style), Paragraph(f"{report.timber_hole_diameter} mm" if report.timber_hole_diameter else "-", normal_style)],
+                    [Paragraph("Hole Depth", normal_style), Paragraph(f"{report.timber_hole_depth} mm" if report.timber_hole_depth else "-", normal_style)],
+                    [Paragraph("Anchor Piles as per Plan", normal_style), Paragraph(report.timber_anchor_piles_as_per_plan or "-", normal_style)],
+                    [Paragraph("Bearers as per Documentation", normal_style), Paragraph(report.timber_bearers_as_per_documentation or "-", normal_style)],
+                ]
+                timber_table = Table(timber_data, colWidths=[220, 220])
+                timber_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), DARK_GREEN),
+                    ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#c8e6c9')),
+                    ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('TOPPADDING', (0, 0), (-1, -1), 4),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                    ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, colors.HexColor('#f8fdf8')]),
+                ]))
+                story.append(timber_table)
+                story.append(Spacer(1, 4))
+            
+            # Cupolex slab details (legacy)
+            if report.inspection_type == "cupolex":
+                mesh_val = f"{report.cupolex_slab_mesh_approved or '-'}"
+                if report.cupolex_slab_mesh_type:
+                    mesh_val += f" ({report.cupolex_slab_mesh_type})"
+                edge_val = f"{report.cupolex_edge_beam_approved or '-'}"
+                if report.cupolex_edge_beam_type:
+                    edge_val += f" ({report.cupolex_edge_beam_type})"
+                cupolex_data = [
+                    [Paragraph("<b>Item</b>", ParagraphStyle('CTH', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold')),
+                     Paragraph("<b>Value</b>", ParagraphStyle('CTH2', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold'))],
+                    [Paragraph("Cupolex Hardware as per Documentation", normal_style), Paragraph(report.cupolex_hardware_as_per_docs or "-", normal_style)],
+                    [Paragraph("Reentrant Corner Detailing Steel", normal_style), Paragraph(report.cupolex_reentrant_corner_steel or "-", normal_style)],
+                    [Paragraph("Slab Mesh Steel as per Approved BC Docs", normal_style), Paragraph(mesh_val, normal_style)],
+                    [Paragraph("Edge Beam Reinforcement as per Approved BC Docs", normal_style), Paragraph(edge_val, normal_style)],
+                    [Paragraph("Penetration Detailing Steel Correct (D12)", normal_style), Paragraph(report.cupolex_penetration_detailing_correct or "-", normal_style)],
+                    [Paragraph("Shower Step Down Detailing Correct", normal_style), Paragraph(report.cupolex_shower_step_down_correct or "-", normal_style)],
+                    [Paragraph("Concrete Strength", normal_style), Paragraph(report.cupolex_concrete_strength or "-", normal_style)],
+                    [Paragraph("Dramix Fibre Reinforcing Required", normal_style), Paragraph(report.cupolex_dramix_fibre_required or "-", normal_style)],
+                ]
+                cupolex_table = Table(cupolex_data, colWidths=[220, 220])
+                cupolex_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), DARK_GREEN),
+                    ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#c8e6c9')),
+                    ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('TOPPADDING', (0, 0), (-1, -1), 4),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                    ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, colors.HexColor('#f8fdf8')]),
+                ]))
+                story.append(cupolex_table)
+                story.append(Spacer(1, 4))
         
         if report.inspection_notes:
             notes_data = [[Paragraph("<b>Inspection Notes</b>", small_style)], [Paragraph(report.inspection_notes, normal_style)]]
@@ -923,6 +1002,7 @@ class SyncResponse(BaseModel):
     message: str
     staff_count: int = 0
     jobs_count: int = 0
+    inspection_items_count: int = 0
 
 @api_router.post("/sync", response_model=SyncResponse)
 async def sync_from_csv():
@@ -1078,6 +1158,117 @@ async def sync_from_csv():
         staff_count=staff_count,
         jobs_count=jobs_count
     )
+
+# ================== Inspection Items Endpoints ==================
+
+@api_router.get("/inspection-items")
+async def get_inspection_items():
+    """Get inspection items grouped by inspection type. Falls back to defaults if none synced."""
+    items = await db.inspection_items.find({}, {"_id": 0}).to_list(500)
+    if not items:
+        items = DEFAULT_INSPECTION_ITEMS
+    
+    # Group by inspection_type
+    grouped = {}
+    for item in items:
+        insp_type = item.get("inspection_type", "Unknown")
+        if insp_type not in grouped:
+            grouped[insp_type] = []
+        grouped[insp_type].append({
+            "question": item.get("question", ""),
+            "answer_type": item.get("answer_type", "yes_no"),
+            "options": item.get("options", ""),
+        })
+    
+    # Build ordered list of types
+    types = list(grouped.keys())
+    
+    return {"types": types, "items": grouped}
+
+@api_router.post("/sync-inspection-items")
+async def sync_inspection_items():
+    """Sync inspection items from the configured Google Sheets URL"""
+    settings = await db.settings.find_one({"id": "app_settings"})
+    if not settings:
+        settings = AppSettings().model_dump()
+    
+    csv_url_raw = settings.get('inspection_items_csv_url', '')
+    if not csv_url_raw or not csv_url_raw.strip():
+        return {"success": False, "message": "No inspection items spreadsheet URL configured", "count": 0}
+    
+    import re
+    def convert_google_sheets_url(url: str) -> str:
+        url = url.strip()
+        if 'export?format=csv' in url or 'output=csv' in url:
+            return url
+        match = re.search(r'/spreadsheets/d/([a-zA-Z0-9_-]+)', url)
+        if match:
+            sheet_id = match.group(1)
+            gid_match = re.search(r'gid=(\d+)', url)
+            gid = gid_match.group(1) if gid_match else '0'
+            return f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid}"
+        return url
+    
+    try:
+        csv_url = convert_google_sheets_url(csv_url_raw)
+        logger.info(f"Syncing inspection items from: {csv_url}")
+        
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as http_client:
+            response = await http_client.get(csv_url)
+            response.raise_for_status()
+            
+            content = response.text
+            logger.info(f"Inspection items CSV content (first 300 chars): {content[:300]}")
+            
+            reader = csv.DictReader(content.splitlines())
+            
+            await db.inspection_items.delete_many({})
+            count = 0
+            
+            for row in reader:
+                inspection_type = (row.get('Inspection Type') or row.get('inspection_type') or
+                                   row.get('Type') or row.get('type') or '')
+                question = (row.get('Question') or row.get('question') or
+                           row.get('Item') or row.get('item') or '')
+                answer_type = (row.get('Answer Type') or row.get('answer_type') or
+                              row.get('Type of Answer') or row.get('Answer') or 'yes_no')
+                options = (row.get('Options') or row.get('options') or
+                          row.get('Choices') or row.get('choices') or '')
+                
+                # If no known columns, try positional
+                if not inspection_type.strip() and row:
+                    vals = list(row.values())
+                    if len(vals) >= 1:
+                        inspection_type = vals[0] or ''
+                    if len(vals) >= 2:
+                        question = vals[1] or ''
+                    if len(vals) >= 3:
+                        answer_type = vals[2] or 'yes_no'
+                    if len(vals) >= 4:
+                        options = vals[3] or ''
+                
+                if inspection_type.strip() and question.strip():
+                    # Normalize answer_type
+                    at = answer_type.strip().lower().replace(' ', '_')
+                    if at not in ('yes_no', 'select', 'yes_no_select', 'text'):
+                        at = 'yes_no'
+                    
+                    await db.inspection_items.insert_one({
+                        "inspection_type": inspection_type.strip(),
+                        "question": question.strip(),
+                        "answer_type": at,
+                        "options": options.strip(),
+                    })
+                    count += 1
+            
+            logger.info(f"Synced {count} inspection items from CSV")
+            return {"success": True, "message": f"Synced {count} inspection items", "count": count}
+    except httpx.HTTPStatusError as e:
+        logger.error(f"HTTP error syncing inspection items: {e.response.status_code}")
+        return {"success": False, "message": f"HTTP {e.response.status_code}. Make sure the spreadsheet is shared as 'Anyone with the link'", "count": 0}
+    except Exception as e:
+        logger.error(f"Error syncing inspection items: {e}")
+        return {"success": False, "message": str(e), "count": 0}
 
 # Geocoding endpoint for address validation
 @api_router.get("/geocode")
