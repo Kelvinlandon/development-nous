@@ -114,6 +114,17 @@ interface FormData {
   timber_hole_depth: string;
   timber_anchor_piles_as_per_plan: string;
   timber_bearers_as_per_documentation: string;
+  // Cupolex Slab fields
+  cupolex_hardware_as_per_docs: string;
+  cupolex_reentrant_corner_steel: string;
+  cupolex_slab_mesh_approved: string;
+  cupolex_slab_mesh_type: string;
+  cupolex_edge_beam_approved: string;
+  cupolex_edge_beam_type: string;
+  cupolex_penetration_detailing_correct: string;
+  cupolex_shower_step_down_correct: string;
+  cupolex_concrete_strength: string;
+  cupolex_dramix_fibre_required: string;
   // Photos
   site_photos: SitePhoto[];
   // Declaration
@@ -312,6 +323,16 @@ export default function FormScreen() {
     timber_hole_depth: '',
     timber_anchor_piles_as_per_plan: '',
     timber_bearers_as_per_documentation: '',
+    cupolex_hardware_as_per_docs: '',
+    cupolex_reentrant_corner_steel: '',
+    cupolex_slab_mesh_approved: '',
+    cupolex_slab_mesh_type: '',
+    cupolex_edge_beam_approved: '',
+    cupolex_edge_beam_type: '',
+    cupolex_penetration_detailing_correct: '',
+    cupolex_shower_step_down_correct: '',
+    cupolex_concrete_strength: '',
+    cupolex_dramix_fibre_required: '',
     site_photos: [],
     staff_print_name: '',
     signature_data: '',
@@ -1328,6 +1349,225 @@ export default function FormScreen() {
               ]}>Timber Pile Inspection</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Cupolex Slab Sub-fields */}
+          {formData.inspection_type === 'cupolex' && (
+            <View style={styles.pendingSubFields}>
+              <Text style={[styles.label, { fontSize: 15, fontWeight: '700', marginBottom: 12, color: '#2E7D32' }]}>Cupolex Slab Details</Text>
+              
+              {/* Cupolex Hardware as per documentation */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Cupolex Hardware as per documentation?</Text>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  {['Yes', 'No'].map((opt) => (
+                    <TouchableOpacity
+                      key={opt}
+                      style={[
+                        styles.optionButton, { flex: 1, paddingVertical: 12 },
+                        formData.cupolex_hardware_as_per_docs === opt && styles.optionButtonActive,
+                      ]}
+                      onPress={() => updateField('cupolex_hardware_as_per_docs', opt)}
+                    >
+                      <Text style={[
+                        styles.optionText,
+                        formData.cupolex_hardware_as_per_docs === opt && styles.optionTextActive,
+                      ]}>{opt}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Reentrant corner detailing steel */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Reentrant corner detailing steel?</Text>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  {['Yes', 'No'].map((opt) => (
+                    <TouchableOpacity
+                      key={opt}
+                      style={[
+                        styles.optionButton, { flex: 1, paddingVertical: 12 },
+                        formData.cupolex_reentrant_corner_steel === opt && styles.optionButtonActive,
+                      ]}
+                      onPress={() => updateField('cupolex_reentrant_corner_steel', opt)}
+                    >
+                      <Text style={[
+                        styles.optionText,
+                        formData.cupolex_reentrant_corner_steel === opt && styles.optionTextActive,
+                      ]}>{opt}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Slab mesh steel as per approved BC docs */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Slab mesh steel as per approved BC docs?</Text>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  {['Yes', 'No'].map((opt) => (
+                    <TouchableOpacity
+                      key={opt}
+                      style={[
+                        styles.optionButton, { flex: 1, paddingVertical: 12 },
+                        formData.cupolex_slab_mesh_approved === opt && styles.optionButtonActive,
+                      ]}
+                      onPress={() => updateField('cupolex_slab_mesh_approved', opt)}
+                    >
+                      <Text style={[
+                        styles.optionText,
+                        formData.cupolex_slab_mesh_approved === opt && styles.optionTextActive,
+                      ]}>{opt}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <Text style={[styles.label, { marginTop: 8 }]}>Mesh Type</Text>
+                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                  {['SE62', 'SE72', 'SE82'].map((mesh) => (
+                    <TouchableOpacity
+                      key={mesh}
+                      style={[
+                        styles.optionButton, { paddingHorizontal: 20, paddingVertical: 12 },
+                        formData.cupolex_slab_mesh_type === mesh && styles.optionButtonActive,
+                      ]}
+                      onPress={() => updateField('cupolex_slab_mesh_type', mesh)}
+                    >
+                      <Text style={[
+                        styles.optionText,
+                        formData.cupolex_slab_mesh_type === mesh && styles.optionTextActive,
+                      ]}>{mesh}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Edge beam reinforcement as per approved BC docs */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Edge beam reinforcement as per approved BC docs?</Text>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  {['Yes', 'No'].map((opt) => (
+                    <TouchableOpacity
+                      key={opt}
+                      style={[
+                        styles.optionButton, { flex: 1, paddingVertical: 12 },
+                        formData.cupolex_edge_beam_approved === opt && styles.optionButtonActive,
+                      ]}
+                      onPress={() => updateField('cupolex_edge_beam_approved', opt)}
+                    >
+                      <Text style={[
+                        styles.optionText,
+                        formData.cupolex_edge_beam_approved === opt && styles.optionTextActive,
+                      ]}>{opt}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <Text style={[styles.label, { marginTop: 8 }]}>Reinforcement Type</Text>
+                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                  {['3 D12', '4 D12', '3 D16', '4 D16'].map((rtype) => (
+                    <TouchableOpacity
+                      key={rtype}
+                      style={[
+                        styles.optionButton, { paddingHorizontal: 16, paddingVertical: 12 },
+                        formData.cupolex_edge_beam_type === rtype && styles.optionButtonActive,
+                      ]}
+                      onPress={() => updateField('cupolex_edge_beam_type', rtype)}
+                    >
+                      <Text style={[
+                        styles.optionText,
+                        formData.cupolex_edge_beam_type === rtype && styles.optionTextActive,
+                      ]}>{rtype}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Penetration detailing steel correct */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Penetration detailing steel correct? (D12 steel)</Text>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  {['Yes', 'No'].map((opt) => (
+                    <TouchableOpacity
+                      key={opt}
+                      style={[
+                        styles.optionButton, { flex: 1, paddingVertical: 12 },
+                        formData.cupolex_penetration_detailing_correct === opt && styles.optionButtonActive,
+                      ]}
+                      onPress={() => updateField('cupolex_penetration_detailing_correct', opt)}
+                    >
+                      <Text style={[
+                        styles.optionText,
+                        formData.cupolex_penetration_detailing_correct === opt && styles.optionTextActive,
+                      ]}>{opt}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Shower step down detailing correct */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Shower step down detailing correct?</Text>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  {['Yes', 'No'].map((opt) => (
+                    <TouchableOpacity
+                      key={opt}
+                      style={[
+                        styles.optionButton, { flex: 1, paddingVertical: 12 },
+                        formData.cupolex_shower_step_down_correct === opt && styles.optionButtonActive,
+                      ]}
+                      onPress={() => updateField('cupolex_shower_step_down_correct', opt)}
+                    >
+                      <Text style={[
+                        styles.optionText,
+                        formData.cupolex_shower_step_down_correct === opt && styles.optionTextActive,
+                      ]}>{opt}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Concrete strength */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Concrete Strength</Text>
+                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                  {['20 MPa', '25 MPa', '30 MPa', '32 MPa'].map((strength) => (
+                    <TouchableOpacity
+                      key={strength}
+                      style={[
+                        styles.optionButton, { paddingHorizontal: 16, paddingVertical: 12 },
+                        formData.cupolex_concrete_strength === strength && styles.optionButtonActive,
+                      ]}
+                      onPress={() => updateField('cupolex_concrete_strength', strength)}
+                    >
+                      <Text style={[
+                        styles.optionText,
+                        formData.cupolex_concrete_strength === strength && styles.optionTextActive,
+                      ]}>{strength}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Dramix fibre reinforcing required */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Dramix fibre reinforcing required?</Text>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  {['Yes', 'No'].map((opt) => (
+                    <TouchableOpacity
+                      key={opt}
+                      style={[
+                        styles.optionButton, { flex: 1, paddingVertical: 12 },
+                        formData.cupolex_dramix_fibre_required === opt && styles.optionButtonActive,
+                      ]}
+                      onPress={() => updateField('cupolex_dramix_fibre_required', opt)}
+                    >
+                      <Text style={[
+                        styles.optionText,
+                        formData.cupolex_dramix_fibre_required === opt && styles.optionTextActive,
+                      ]}>{opt}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </View>
+          )}
 
           {/* Timber Pile Sub-fields */}
           {formData.inspection_type === 'timber_pile' && (

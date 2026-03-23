@@ -119,6 +119,17 @@ class SiteVisitReport(BaseModel):
     timber_hole_depth: Optional[str] = None
     timber_anchor_piles_as_per_plan: Optional[str] = None
     timber_bearers_as_per_documentation: Optional[str] = None
+    # Cupolex Slab fields
+    cupolex_hardware_as_per_docs: Optional[str] = None
+    cupolex_reentrant_corner_steel: Optional[str] = None
+    cupolex_slab_mesh_approved: Optional[str] = None
+    cupolex_slab_mesh_type: Optional[str] = None
+    cupolex_edge_beam_approved: Optional[str] = None
+    cupolex_edge_beam_type: Optional[str] = None
+    cupolex_penetration_detailing_correct: Optional[str] = None
+    cupolex_shower_step_down_correct: Optional[str] = None
+    cupolex_concrete_strength: Optional[str] = None
+    cupolex_dramix_fibre_required: Optional[str] = None
     # Site Photos
     site_photos: List[SitePhoto] = []
     # Declaration
@@ -170,6 +181,16 @@ class SiteVisitReportCreate(BaseModel):
     timber_hole_depth: Optional[str] = None
     timber_anchor_piles_as_per_plan: Optional[str] = None
     timber_bearers_as_per_documentation: Optional[str] = None
+    cupolex_hardware_as_per_docs: Optional[str] = None
+    cupolex_reentrant_corner_steel: Optional[str] = None
+    cupolex_slab_mesh_approved: Optional[str] = None
+    cupolex_slab_mesh_type: Optional[str] = None
+    cupolex_edge_beam_approved: Optional[str] = None
+    cupolex_edge_beam_type: Optional[str] = None
+    cupolex_penetration_detailing_correct: Optional[str] = None
+    cupolex_shower_step_down_correct: Optional[str] = None
+    cupolex_concrete_strength: Optional[str] = None
+    cupolex_dramix_fibre_required: Optional[str] = None
     site_photos: List[SitePhotoCreate] = []
     staff_print_name: str
     signature_data: str
@@ -572,6 +593,40 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
                 ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, colors.HexColor('#f8fdf8')]),
             ]))
             story.append(timber_table)
+            story.append(Spacer(1, 4))
+        
+        # Cupolex slab details
+        if report.inspection_type == "cupolex":
+            mesh_val = f"{report.cupolex_slab_mesh_approved or '-'}"
+            if report.cupolex_slab_mesh_type:
+                mesh_val += f" ({report.cupolex_slab_mesh_type})"
+            edge_val = f"{report.cupolex_edge_beam_approved or '-'}"
+            if report.cupolex_edge_beam_type:
+                edge_val += f" ({report.cupolex_edge_beam_type})"
+            cupolex_data = [
+                [Paragraph("<b>Item</b>", ParagraphStyle('CTH', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold')),
+                 Paragraph("<b>Value</b>", ParagraphStyle('CTH2', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold'))],
+                [Paragraph("Cupolex Hardware as per Documentation", normal_style), Paragraph(report.cupolex_hardware_as_per_docs or "-", normal_style)],
+                [Paragraph("Reentrant Corner Detailing Steel", normal_style), Paragraph(report.cupolex_reentrant_corner_steel or "-", normal_style)],
+                [Paragraph("Slab Mesh Steel as per Approved BC Docs", normal_style), Paragraph(mesh_val, normal_style)],
+                [Paragraph("Edge Beam Reinforcement as per Approved BC Docs", normal_style), Paragraph(edge_val, normal_style)],
+                [Paragraph("Penetration Detailing Steel Correct (D12)", normal_style), Paragraph(report.cupolex_penetration_detailing_correct or "-", normal_style)],
+                [Paragraph("Shower Step Down Detailing Correct", normal_style), Paragraph(report.cupolex_shower_step_down_correct or "-", normal_style)],
+                [Paragraph("Concrete Strength", normal_style), Paragraph(report.cupolex_concrete_strength or "-", normal_style)],
+                [Paragraph("Dramix Fibre Reinforcing Required", normal_style), Paragraph(report.cupolex_dramix_fibre_required or "-", normal_style)],
+            ]
+            cupolex_table = Table(cupolex_data, colWidths=[220, 220])
+            cupolex_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), DARK_GREEN),
+                ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#c8e6c9')),
+                ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('TOPPADDING', (0, 0), (-1, -1), 4),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, colors.HexColor('#f8fdf8')]),
+            ]))
+            story.append(cupolex_table)
             story.append(Spacer(1, 4))
         
         if report.inspection_notes:
