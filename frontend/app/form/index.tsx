@@ -86,6 +86,9 @@ interface FormData {
   job_address_lng: number | null;
   departure_office: string;
   estimated_km: number | null;
+  estimated_travel_minutes: number | null;
+  time_on_site_minutes: number | null;
+  total_project_hours: number | null;
   purpose_of_visit: string[];
   site_arrival_time: string;
   site_departure_time: string;
@@ -235,19 +238,43 @@ export default function FormScreen() {
         params: { office, job_address: jobAddress }
       });
       if (response.data.success) {
-        setFormData(prev => ({ ...prev, estimated_km: response.data.km }));
+        const travelMin = response.data.duration_minutes || null;
+        setFormData(prev => {
+          const updated = { ...prev, estimated_km: response.data.km, estimated_travel_minutes: travelMin };
+          return recalcProjectTime(updated);
+        });
         setDistanceMessage(response.data.message);
       } else {
         setDistanceMessage(response.data.message || 'Could not estimate distance');
-        setFormData(prev => ({ ...prev, estimated_km: null }));
+        setFormData(prev => ({ ...prev, estimated_km: null, estimated_travel_minutes: null }));
       }
     } catch (error) {
       console.error('Distance estimation error:', error);
       setDistanceMessage('Failed to estimate distance');
-      setFormData(prev => ({ ...prev, estimated_km: null }));
+      setFormData(prev => ({ ...prev, estimated_km: null, estimated_travel_minutes: null }));
     } finally {
       setCalculatingDistance(false);
     }
+  };
+
+  const calcOnSiteMinutes = (arrival: string, departure: string): number | null => {
+    if (!arrival || !departure) return null;
+    const [aH, aM] = arrival.split(':').map(Number);
+    const [dH, dM] = departure.split(':').map(Number);
+    if (isNaN(aH) || isNaN(aM) || isNaN(dH) || isNaN(dM)) return null;
+    const diff = (dH * 60 + dM) - (aH * 60 + aM);
+    return diff > 0 ? diff : null;
+  };
+
+  const recalcProjectTime = (data: FormData): FormData => {
+    const onSite = calcOnSiteMinutes(data.site_arrival_time, data.site_departure_time);
+    const travelReturn = data.estimated_travel_minutes ? data.estimated_travel_minutes * 2 : 0;
+    const totalMin = (onSite || 0) + travelReturn;
+    return {
+      ...data,
+      time_on_site_minutes: onSite,
+      total_project_hours: totalMin > 0 ? Math.round(totalMin / 6) / 10 : null, // round to 1 decimal
+    };
   };
 
 
@@ -367,6 +394,9 @@ export default function FormScreen() {
     job_address_lng: null,
     departure_office: '',
     estimated_km: null,
+    estimated_travel_minutes: null,
+    time_on_site_minutes: 30,
+    total_project_hours: null,
     purpose_of_visit: [],
     site_arrival_time: (() => {
       const now = new Date();
@@ -469,7 +499,8 @@ export default function FormScreen() {
     }
     if (event.type === 'set' && selectedDate) {
       setArrivalTime(selectedDate);
-      updateField('site_arrival_time', formatTimeForStorage(selectedDate));
+      const timeStr = formatTimeForStorage(selectedDate);
+      setFormData(prev => recalcProjectTime({ ...prev, site_arrival_time: timeStr }));
     }
     if (Platform.OS === 'ios' && event.type === 'dismissed') {
       setShowArrivalTimePicker(false);
@@ -482,7 +513,8 @@ export default function FormScreen() {
     }
     if (event.type === 'set' && selectedDate) {
       setDepartureTime(selectedDate);
-      updateField('site_departure_time', formatTimeForStorage(selectedDate));
+      const timeStr = formatTimeForStorage(selectedDate);
+      setFormData(prev => recalcProjectTime({ ...prev, site_departure_time: timeStr }));
     }
     if (Platform.OS === 'ios' && event.type === 'dismissed') {
       setShowDepartureTimePicker(false);
@@ -1284,6 +1316,60 @@ export default function FormScreen() {
           multiline
           numberOfLines={3}
         />
+      </View>
+
+      {/* Project Time Summary */}
+      <View style={[styles.inputGroup, { backgroundColor: '#F1F8E9', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#C5E1A5' }]}>
+        <Text style={[styles.label, { fontSize: 15, fontWeight: '700', color: '#33691E', marginBottom: 10 }]}>Project Time Estimate</Text>
+        
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+          <Text style={{ fontSize: 13, color: '#555' }}>Time on site:</Text>
+          <Text style={{ fontSize: 13, fontWeight: '600' }}>
+            {formData.time_on_site_minutes ? `${formData.time_on_site_minutes} min` : '—'}
+          </Text>
+        </View>
+        
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+          <Text style={{ fontSize: 13, color: '#555' }}>Travel time (return):</Text>
+          <Text style={{ fontSize: 13, fontWeight: '600' }}>
+            {formData.estimated_travel_minutes ? `${formData.estimated_travel_minutes * 2} min` : '—'}
+          </Text>
+        </View>
+        
+        <View style={{ height: 1, backgroundColor: '#AED581', marginVertical: 8 }} />
+        
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text style={{ fontSize: 14, fontWeight: '700', color: '#33691E' }}>Total Project Time:</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <TextInput
+              style={{
+                fontSize: 16,
+                fontWeight: '700',
+                color: '#2E7D32',
+                backgroundColor: '#fff',
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: '#AED581',
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                width: 70,
+                textAlign: 'center',
+              }}
+              value={formData.total_project_hours !== null ? String(formData.total_project_hours) : ''}
+              onChangeText={(text) => {
+                const val = parseFloat(text);
+                updateField('total_project_hours', isNaN(val) ? null : val);
+              }}
+              keyboardType="decimal-pad"
+              placeholder="0.0"
+            />
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#33691E' }}>hrs</Text>
+          </View>
+        </View>
+        
+        <Text style={{ fontSize: 11, color: '#689F38', marginTop: 6, fontStyle: 'italic' }}>
+          Auto-calculated. Tap the hours to manually adjust.
+        </Text>
       </View>
 
       <View style={styles.inputGroup}>
