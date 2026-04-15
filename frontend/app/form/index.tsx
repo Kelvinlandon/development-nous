@@ -147,8 +147,8 @@ export default function FormScreen() {
   // Time picker states
   const [showArrivalTimePicker, setShowArrivalTimePicker] = useState(false);
   const [showDepartureTimePicker, setShowDepartureTimePicker] = useState(false);
-  const [arrivalTime, setArrivalTime] = useState<Date | null>(null);
-  const [departureTime, setDepartureTime] = useState<Date | null>(null);
+  const [arrivalTime, setArrivalTime] = useState<Date | null>(new Date());
+  const [departureTime, setDepartureTime] = useState<Date | null>(new Date(Date.now() + 30 * 60 * 1000));
   
   // Date picker states
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -368,8 +368,14 @@ export default function FormScreen() {
     departure_office: '',
     estimated_km: null,
     purpose_of_visit: [],
-    site_arrival_time: '',
-    site_departure_time: '',
+    site_arrival_time: (() => {
+      const now = new Date();
+      return now.toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit', hour12: false });
+    })(),
+    site_departure_time: (() => {
+      const later = new Date(Date.now() + 30 * 60 * 1000);
+      return later.toLocaleTimeString('en-NZ', { hour: '2-digit', minute: '2-digit', hour12: false });
+    })(),
     site_description: '',
     weather_conditions: '',
     contractor_responsible: '',
