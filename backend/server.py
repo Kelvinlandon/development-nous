@@ -305,7 +305,7 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
     MARGIN = 23
     
     def on_first_page(canvas, doc):
-        """Draw a print-friendly header with logo and Harry on the first page"""
+        """Draw a print-friendly header with logo on the first page"""
         canvas.saveState()
         # Light green header background (within margins)
         canvas.setFillColor(LIGHT_GREEN)
@@ -323,19 +323,6 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
             except Exception:
                 pass
         
-        # Add Harry (right side, inside margin - big)
-        harry_path = ROOT_DIR / 'assets' / 'harry.png'
-        if harry_path.exists():
-            try:
-                canvas.drawImage(str(harry_path), A4[0] - MARGIN - 105, A4[1] - 108, width=100, height=100, preserveAspectRatio=True, mask='auto')
-            except Exception:
-                pass
-        
-        # Tagline
-        canvas.setFillColor(DARK_GREEN)
-        canvas.setFont('Helvetica-Oblique', 9)
-        canvas.drawCentredString(A4[0]/2, A4[1] - 100, "Take ya time and Paws for safety!")
-        
         # Footer
         canvas.setFillColor(LIGHT_GRAY)
         canvas.rect(MARGIN, MARGIN, A4[0] - 2*MARGIN, 30, fill=True, stroke=False)
@@ -345,18 +332,10 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
         canvas.setFont('Helvetica', 7)
         canvas.drawCentredString(A4[0]/2, MARGIN + 10, f"{settings.company_name}  |  SafetyPaws Site Visit Report  |  {report.date}")
         
-        # Waiting Harry bottom-left in footer (inside margin)
-        harry_wait_path = ROOT_DIR / 'assets' / 'harry_waiting.png'
-        if harry_wait_path.exists():
-            try:
-                canvas.drawImage(str(harry_wait_path), MARGIN, MARGIN - 5, width=50, height=50, preserveAspectRatio=True, mask='auto')
-            except Exception:
-                pass
-        
         canvas.restoreState()
     
     def on_later_pages(canvas, doc):
-        """Footer with waiting Harry on subsequent pages"""
+        """Footer on subsequent pages"""
         canvas.saveState()
         # Footer
         canvas.setFillColor(LIGHT_GRAY)
@@ -367,22 +346,6 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
         canvas.setFont('Helvetica', 7)
         canvas.drawCentredString(A4[0]/2, MARGIN + 10, f"{settings.company_name}  |  SafetyPaws Site Visit Report  |  Page {doc.page}")
         
-        # Waiting Harry bottom-left (inside margin)
-        harry_wait_path = ROOT_DIR / 'assets' / 'harry_waiting.png'
-        if harry_wait_path.exists():
-            try:
-                canvas.drawImage(str(harry_wait_path), MARGIN, MARGIN - 5, width=50, height=50, preserveAspectRatio=True, mask='auto')
-            except Exception:
-                pass
-        
-        # Harry top-right (inside margin)
-        harry_path = ROOT_DIR / 'assets' / 'harry.png'
-        if harry_path.exists():
-            try:
-                canvas.drawImage(str(harry_path), A4[0] - MARGIN - 55, A4[1] - MARGIN - 50, width=50, height=50, preserveAspectRatio=True, mask='auto')
-            except Exception:
-                pass
-        
         canvas.restoreState()
     
     doc = SimpleDocTemplate(
@@ -391,7 +354,7 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
         rightMargin=20*mm,
         leftMargin=20*mm,
         topMargin=120,  # Space for header on first page
-        bottomMargin=80  # Space for footer with waiting Harry
+        bottomMargin=60  # Space for footer
     )
     
     story = []
