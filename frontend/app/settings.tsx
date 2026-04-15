@@ -34,6 +34,8 @@ interface Settings {
   staff_csv_url: string;
   jobs_csv_url: string;
   inspection_items_csv_url: string;
+  hastings_office_address: string;
+  palmerston_north_office_address: string;
   report_frequency: string;
   report_recipient_email: string;
 }
@@ -51,6 +53,8 @@ export default function SettingsScreen() {
     staff_csv_url: 'https://docs.google.com/spreadsheets/d/1IXIYNCBUyP1OHn5sjci-sn2DWq_x1XJiMvgq1YfKz9Y/edit?gid=0#gid=0',
     jobs_csv_url: 'https://docs.google.com/spreadsheets/d/1xIpraMOCkGG4MUC3CnQ6o7BhyDbHZ0JzKobt7YlPQgw/edit?gid=0#gid=0',
     inspection_items_csv_url: '',
+    hastings_office_address: '502 Karamu Road North, Hastings',
+    palmerston_north_office_address: '168 Grey Street, Palmerston North Central, Palmerston North 4410',
     report_frequency: 'manual',
     report_recipient_email: '',
   });
@@ -370,6 +374,32 @@ export default function SettingsScreen() {
                 Columns: Inspection Type, Question, Answer Type, Options{'\n'}
                 Leave blank to use built-in defaults (Cupolex Slab + Timber Pile)
               </Text>
+            </View>
+
+            <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Office Addresses</Text>
+            
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Hastings Office Address</Text>
+              <TextInput
+                style={styles.input}
+                value={settings.hastings_office_address}
+                onChangeText={(text) =>
+                  setSettings({ ...settings, hastings_office_address: text })
+                }
+                placeholder="502 Karamu Road North, Hastings"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Palmerston North Office Address</Text>
+              <TextInput
+                style={styles.input}
+                value={settings.palmerston_north_office_address}
+                onChangeText={(text) =>
+                  setSettings({ ...settings, palmerston_north_office_address: text })
+                }
+                placeholder="168 Grey Street, Palmerston North"
+              />
             </View>
 
             <TouchableOpacity

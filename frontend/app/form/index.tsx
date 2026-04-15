@@ -84,6 +84,8 @@ interface FormData {
   job_address: string;
   job_address_lat: number | null;
   job_address_lng: number | null;
+  departure_office: string;
+  estimated_km: number | null;
   purpose_of_visit: string[];
   site_arrival_time: string;
   site_departure_time: string;
@@ -175,6 +177,10 @@ export default function FormScreen() {
   const [inspectionItems, setInspectionItems] = useState<Record<string, Array<{question: string, answer_type: string, options: string}>>>({});
   const [inspectionResponses, setInspectionResponses] = useState<Record<string, {answer: string, detail: string}>>({});
   
+  // Distance estimation
+  const [calculatingDistance, setCalculatingDistance] = useState(false);
+  const [distanceMessage, setDistanceMessage] = useState('');
+  
   const today = new Date();
   const todayString = today.toISOString().split('T')[0];
   
@@ -219,6 +225,31 @@ export default function FormScreen() {
       // Will use defaults rendered by backend if fetch fails
     }
   };
+
+  const estimateDistance = async (office: string, jobAddress: string) => {
+    if (!office || !jobAddress) return;
+    setCalculatingDistance(true);
+    setDistanceMessage('Calculating...');
+    try {
+      const response = await axios.get(`${API_URL}/api/estimate-distance`, {
+        params: { office, job_address: jobAddress }
+      });
+      if (response.data.success) {
+        setFormData(prev => ({ ...prev, estimated_km: response.data.km }));
+        setDistanceMessage(response.data.message);
+      } else {
+        setDistanceMessage(response.data.message || 'Could not estimate distance');
+        setFormData(prev => ({ ...prev, estimated_km: null }));
+      }
+    } catch (error) {
+      console.error('Distance estimation error:', error);
+      setDistanceMessage('Failed to estimate distance');
+      setFormData(prev => ({ ...prev, estimated_km: null }));
+    } finally {
+      setCalculatingDistance(false);
+    }
+  };
+
 
   const updateInspectionResponse = (question: string, answer: string, detail?: string) => {
     setInspectionResponses(prev => ({
@@ -310,6 +341,10 @@ export default function FormScreen() {
     }));
     setAddressValidated(true);
     setShowAddressSuggestions(false);
+    // Auto-calculate distance if office is already selected
+    if (formData.departure_office) {
+      estimateDistance(formData.departure_office, suggestion.display_name);
+    }
   };
 
   const openInMaps = () => {
@@ -330,6 +365,8 @@ export default function FormScreen() {
     job_address: '',
     job_address_lat: null,
     job_address_lng: null,
+    departure_office: '',
+    estimated_km: null,
     purpose_of_visit: [],
     site_arrival_time: '',
     site_departure_time: '',
@@ -1016,6 +1053,61 @@ export default function FormScreen() {
               <Ionicons name="map-outline" size={16} color="#fff" />
               <Text style={styles.mapButtonText}>View on Map</Text>
             </TouchableOpacity>
+          </View>
+        )}
+      </View>
+
+      {/* Departure Office & Distance */}
+      <View style={styles.inputGroup}>
+        <Text style={styles.label}>Departure Office</Text>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          {[
+            { key: 'hastings', label: 'Hastings' },
+            { key: 'palmerston_north', label: 'Palmerston North' },
+          ].map((office) => (
+            <TouchableOpacity
+              key={office.key}
+              style={[
+                styles.optionButton, { flex: 1, paddingVertical: 12 },
+                formData.departure_office === office.key && styles.optionButtonActive,
+              ]}
+              onPress={() => {
+                updateField('departure_office', office.key);
+                if (formData.job_address) {
+                  estimateDistance(office.key, formData.job_address);
+                }
+              }}
+            >
+              <Text style={[
+                styles.optionText,
+                formData.departure_office === office.key && styles.optionTextActive,
+              ]}>{office.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        {(distanceMessage || calculatingDistance) && (
+          <View style={{
+            marginTop: 8,
+            padding: 10,
+            backgroundColor: formData.estimated_km ? '#E8F5E9' : '#FFF3E0',
+            borderRadius: 8,
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}>
+            {calculatingDistance ? (
+              <ActivityIndicator size="small" color="#4CAF50" style={{ marginRight: 8 }} />
+            ) : (
+              <Text style={{ marginRight: 6, fontSize: 16 }}>
+                {formData.estimated_km ? '🚗' : '⚠️'}
+              </Text>
+            )}
+            <Text style={{
+              fontSize: 14,
+              fontWeight: formData.estimated_km ? '700' : '400',
+              color: formData.estimated_km ? '#2E7D32' : '#E65100',
+            }}>
+              {calculatingDistance ? 'Calculating distance...' : distanceMessage}
+            </Text>
           </View>
         )}
       </View>

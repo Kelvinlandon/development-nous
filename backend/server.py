@@ -113,6 +113,8 @@ class SiteVisitReport(BaseModel):
     date: str
     job_no_name: str
     job_address: str = ""
+    departure_office: Optional[str] = None
+    estimated_km: Optional[float] = None
     purpose_of_visit: List[str] = []
     site_arrival_time: str
     site_departure_time: str
@@ -181,6 +183,8 @@ class SiteVisitReportCreate(BaseModel):
     date: str
     job_no_name: str
     job_address: str = ""
+    departure_office: Optional[str] = None
+    estimated_km: Optional[float] = None
     purpose_of_visit: List[str] = []
     site_arrival_time: str
     site_departure_time: str
@@ -238,6 +242,9 @@ class AppSettings(BaseModel):
     staff_csv_url: str = "https://docs.google.com/spreadsheets/d/1IXIYNCBUyP1OHn5sjci-sn2DWq_x1XJiMvgq1YfKz9Y/edit?gid=0#gid=0"
     jobs_csv_url: str = "https://docs.google.com/spreadsheets/d/1xIpraMOCkGG4MUC3CnQ6o7BhyDbHZ0JzKobt7YlPQgw/edit?gid=0#gid=0"
     inspection_items_csv_url: str = ""
+    # Office addresses for distance calculation
+    hastings_office_address: str = "502 Karamu Road North, Hastings"
+    palmerston_north_office_address: str = "168 Grey Street, Palmerston North Central, Palmerston North 4410"
     # Spreadsheet report frequency
     report_frequency: str = "manual"  # "manual", "daily", "weekly", "monthly"
     report_recipient_email: str = ""
@@ -256,6 +263,8 @@ class AppSettingsUpdate(BaseModel):
     staff_csv_url: Optional[str] = None
     jobs_csv_url: Optional[str] = None
     inspection_items_csv_url: Optional[str] = None
+    hastings_office_address: Optional[str] = None
+    palmerston_north_office_address: Optional[str] = None
     report_frequency: Optional[str] = None
     report_recipient_email: Optional[str] = None
 
@@ -451,6 +460,11 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
     ]
     if report.job_address:
         site_data.append([Paragraph("<b>Job Address</b>", small_style), Paragraph(report.job_address, normal_style), "", ""])
+    if report.departure_office or report.estimated_km:
+        office_name = "Hastings" if report.departure_office == "hastings" else "Palmerston North" if report.departure_office == "palmerston_north" else (report.departure_office or "-")
+        km_str = f"{report.estimated_km} km" if report.estimated_km else "-"
+        site_data.append([Paragraph("<b>Departure Office</b>", small_style), Paragraph(office_name, normal_style),
+                          Paragraph("<b>Est. Travel</b>", small_style), Paragraph(km_str, normal_style)])
     site_table = Table(site_data, colWidths=[75, 145, 75, 145])
     site_table.setStyle(TableStyle([
         ('FONTSIZE', (0, 0), (-1, -1), 8),
@@ -1306,6 +1320,89 @@ async def geocode_address(address: str):
     except Exception as e:
         logger.error(f"Geocoding error: {e}")
         return {"valid": False, "results": [], "message": str(e)}
+
+@api_router.get("/estimate-distance")
+async def estimate_distance(office: str, job_address: str):
+    """Estimate driving distance in km from office to job address using OSRM"""
+    try:
+        # Get office address from settings
+        settings = await db.settings.find_one({"id": "app_settings"})
+        if not settings:
+            settings = AppSettings().model_dump()
+        settings_obj = AppSettings(**settings)
+        
+        if office == "hastings":
+            office_address = settings_obj.hastings_office_address
+        elif office == "palmerston_north":
+            office_address = settings_obj.palmerston_north_office_address
+        else:
+            return {"success": False, "message": "Unknown office", "km": None}
+        
+        # Geocode both addresses
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            # Geocode office
+            office_resp = await client.get(
+                "https://nominatim.openstreetmap.org/search",
+                params={"q": office_address, "format": "json", "limit": 1},
+                headers={"User-Agent": "SafetyPaws/1.0"}
+            )
+            office_results = office_resp.json()
+            if not office_results:
+                return {"success": False, "message": f"Could not geocode office address: {office_address}", "km": None}
+            
+            office_lat = float(office_results[0]["lat"])
+            office_lon = float(office_results[0]["lon"])
+            
+            # Small delay to respect Nominatim rate limit
+            import asyncio
+            await asyncio.sleep(1.1)
+            
+            # Geocode job address
+            job_resp = await client.get(
+                "https://nominatim.openstreetmap.org/search",
+                params={"q": job_address, "format": "json", "limit": 1},
+                headers={"User-Agent": "SafetyPaws/1.0"}
+            )
+            job_results = job_resp.json()
+            if not job_results:
+                return {"success": False, "message": f"Could not geocode job address: {job_address}", "km": None}
+            
+            job_lat = float(job_results[0]["lat"])
+            job_lon = float(job_results[0]["lon"])
+            
+            # Use OSRM for driving distance
+            osrm_url = f"http://router.project-osrm.org/route/v1/driving/{office_lon},{office_lat};{job_lon},{job_lat}"
+            route_resp = await client.get(osrm_url, params={"overview": "false"})
+            route_data = route_resp.json()
+            
+            if route_data.get("code") == "Ok" and route_data.get("routes"):
+                distance_m = route_data["routes"][0]["distance"]
+                distance_km = round(distance_m / 1000, 1)
+                duration_s = route_data["routes"][0]["duration"]
+                duration_min = round(duration_s / 60)
+                
+                return {
+                    "success": True,
+                    "km": distance_km,
+                    "duration_minutes": duration_min,
+                    "office_address": office_address,
+                    "message": f"{distance_km} km ({duration_min} min drive)"
+                }
+            else:
+                # Fallback: use geopy geodesic distance with road factor
+                from geopy.distance import geodesic
+                straight_line = geodesic((office_lat, office_lon), (job_lat, job_lon)).km
+                estimated_road = round(straight_line * 1.3, 1)
+                return {
+                    "success": True,
+                    "km": estimated_road,
+                    "duration_minutes": None,
+                    "office_address": office_address,
+                    "message": f"~{estimated_road} km (estimated)"
+                }
+    except Exception as e:
+        logger.error(f"Distance estimation error: {e}")
+        return {"success": False, "message": str(e), "km": None}
 
 # Settings endpoints
 @api_router.get("/settings", response_model=AppSettings)
