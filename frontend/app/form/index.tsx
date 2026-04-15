@@ -790,20 +790,35 @@ export default function FormScreen() {
       const response = await axios.post(`${API_URL}/api/reports`, submitData);
       Alert.alert(
         'Success',
-        'Report created successfully. Would you like to send it via email?',
+        'Report created successfully. What would you like to email?',
         [
           { text: 'Later', onPress: () => router.replace('/') },
           {
-            text: 'Send Email',
+            text: 'Send Report',
             onPress: async () => {
               try {
                 await axios.post(`${API_URL}/api/reports/${response.data.id}/email`, {
                   report_id: response.data.id
                 });
-                Alert.alert('Email Sent', 'Report has been emailed successfully');
+                Alert.alert('Email Sent', 'Report PDF has been emailed successfully');
                 router.replace('/');
               } catch (error) {
                 Alert.alert('Email Failed', 'Report saved but email failed to send');
+                router.replace('/');
+              }
+            },
+          },
+          {
+            text: 'Send Photos',
+            onPress: async () => {
+              try {
+                await axios.post(`${API_URL}/api/reports/${response.data.id}/email-photos`, {
+                  report_id: response.data.id
+                });
+                Alert.alert('Photos Sent', 'Site photos have been emailed successfully');
+                router.replace('/');
+              } catch (error) {
+                Alert.alert('Email Failed', 'Report saved but photos email failed to send');
                 router.replace('/');
               }
             },
