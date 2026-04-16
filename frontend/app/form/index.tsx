@@ -274,8 +274,28 @@ export default function FormScreen() {
     return {
       ...data,
       time_on_site_minutes: onSite,
-      total_project_hours: totalMin > 0 ? Math.round(totalMin / 6) / 10 : null, // round to 1 decimal
+      total_project_hours: totalMin > 0 ? Math.round(totalMin / 6) / 10 : null,
     };
+  };
+
+  const formatHoursMinutes = (decimalHours: number | null): string => {
+    if (decimalHours === null || decimalHours === undefined) return '';
+    const totalMin = Math.round(decimalHours * 60);
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    return `${h}:${m.toString().padStart(2, '0')}`;
+  };
+
+  const parseHoursMinutes = (str: string): number | null => {
+    if (!str) return null;
+    if (str.includes(':')) {
+      const [hStr, mStr] = str.split(':');
+      const h = parseInt(hStr) || 0;
+      const m = parseInt(mStr) || 0;
+      return Math.round((h * 60 + m) / 6) / 10;
+    }
+    const val = parseFloat(str);
+    return isNaN(val) ? null : val;
   };
 
 
@@ -1228,38 +1248,6 @@ export default function FormScreen() {
         )}
       </View>
 
-      {/* Purpose of Visit */}
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>Purpose of Visit</Text>
-        <View style={styles.purposeContainer}>
-          {VISIT_PURPOSE_OPTIONS.map((purpose) => (
-            <TouchableOpacity
-              key={purpose}
-              style={styles.purposeItem}
-              onPress={() => {
-                setFormData(prev => {
-                  const current = prev.purpose_of_visit;
-                  const updated = current.includes(purpose)
-                    ? current.filter(p => p !== purpose)
-                    : [...current, purpose];
-                  return { ...prev, purpose_of_visit: updated };
-                });
-              }}
-            >
-              <View style={[
-                styles.purposeCheckbox,
-                formData.purpose_of_visit.includes(purpose) && styles.purposeCheckboxActive,
-              ]}>
-                {formData.purpose_of_visit.includes(purpose) && (
-                  <Ionicons name="checkmark" size={16} color="#fff" />
-                )}
-              </View>
-              <Text style={styles.purposeText}>{purpose}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
       <View style={styles.row}>
         <View style={[styles.inputGroup, { flex: 1 }]}>
           <Text style={styles.label}>Arrival Time</Text>
@@ -1403,7 +1391,7 @@ export default function FormScreen() {
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
           <Text style={{ fontSize: 13, color: '#555' }}>Time on site:</Text>
           <Text style={{ fontSize: 13, fontWeight: '600' }}>
-            {formData.time_on_site_minutes ? `${formData.time_on_site_minutes} min` : '—'}
+            {formData.time_on_site_minutes ? `${Math.floor(formData.time_on_site_minutes / 60)}:${(formData.time_on_site_minutes % 60).toString().padStart(2, '0')}` : '—'}
           </Text>
         </View>
         
@@ -1430,23 +1418,23 @@ export default function FormScreen() {
                 borderColor: '#AED581',
                 paddingHorizontal: 10,
                 paddingVertical: 4,
-                width: 70,
+                width: 80,
                 textAlign: 'center',
               }}
-              value={formData.total_project_hours !== null ? String(formData.total_project_hours) : ''}
+              value={formatHoursMinutes(formData.total_project_hours)}
               onChangeText={(text) => {
-                const val = parseFloat(text);
-                updateField('total_project_hours', isNaN(val) ? null : val);
+                const val = parseHoursMinutes(text);
+                updateField('total_project_hours', val);
               }}
-              keyboardType="decimal-pad"
-              placeholder="0.0"
+              keyboardType="default"
+              placeholder="0:00"
             />
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#33691E' }}>hrs</Text>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#33691E' }}>h:m</Text>
           </View>
         </View>
         
         <Text style={{ fontSize: 11, color: '#689F38', marginTop: 6, fontStyle: 'italic' }}>
-          Auto-calculated. Tap the hours to manually adjust.
+          Auto-calculated. Tap to manually adjust (h:mm format).
         </Text>
       </View>
 

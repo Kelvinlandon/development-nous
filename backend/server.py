@@ -507,10 +507,16 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings, purpose_type: s
     if report.total_project_hours is not None or report.time_on_site_minutes is not None:
         on_site = f"{report.time_on_site_minutes} min" if report.time_on_site_minutes else "-"
         travel = f"{report.estimated_travel_minutes} min (return)" if report.estimated_travel_minutes else "-"
-        total_hrs = f"{report.total_project_hours:.1f} hrs" if report.total_project_hours is not None else "-"
+        if report.total_project_hours is not None:
+            total_min = round(report.total_project_hours * 60)
+            total_h = total_min // 60
+            total_m = total_min % 60
+            total_str = f"{total_h}:{total_m:02d}"
+        else:
+            total_str = "-"
         site_data.append([Paragraph("<b>Time on Site</b>", small_style), Paragraph(on_site, normal_style),
                           Paragraph("<b>Travel Time</b>", small_style), Paragraph(travel, normal_style)])
-        site_data.append([Paragraph("<b>Total Project Time</b>", small_style), Paragraph(total_hrs, ParagraphStyle('Bold', parent=normal_style, fontName='Helvetica-Bold', textColor=colors.HexColor('#2E7D32'))), "", ""])
+        site_data.append([Paragraph("<b>Total Project Time</b>", small_style), Paragraph(total_str, ParagraphStyle('Bold', parent=normal_style, fontName='Helvetica-Bold', textColor=colors.HexColor('#2E7D32'))), "", ""])
     site_table = Table(site_data, colWidths=[75, 145, 75, 145])
     site_table.setStyle(TableStyle([
         ('FONTSIZE', (0, 0), (-1, -1), 8),
