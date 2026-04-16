@@ -471,7 +471,6 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings, purpose_type: s
     )
     
     # ---- Title ----
-    story.append(Paragraph("Site Visit Checklist / Safety Plan", title_style))
     story.append(Paragraph(f"{report.job_no_name}  —  {report.date}", subtitle_style))
     
     # ---- Site Information ----
@@ -645,10 +644,14 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings, purpose_type: s
             story.append(Paragraph(f"<b>Electrical Equipment Used:</b> {report.electrical_equipment_list}", normal_style))
     
     # ---- Inspection / Purpose-Specific Section ----
-    if not is_hs and report.building_consent_inspection:
-        if report.building_consent_inspection:
+    if not is_hs:
+        has_dynamic = hasattr(report, 'inspection_responses') and report.inspection_responses and len(report.inspection_responses) > 0
+        
+        if has_dynamic or report.building_consent_inspection:
             story.append(Spacer(1, 8))
-            story.append(Paragraph("Building Consent Requirement Inspection", section_style))
+            # Dynamic section title based on purpose
+            section_title = purpose_info.get("pdf_header", "Inspection Details")
+            story.append(Paragraph(section_title, section_style))
             story.append(Spacer(1, 4))
         
             # Check if we have dynamic inspection_responses (new system)
