@@ -371,8 +371,11 @@ export default function SettingsScreen() {
                 autoCorrect={false}
               />
               <Text style={styles.hint}>
-                Columns: Inspection Type, Question, Answer Type, Options{'\n'}
-                Leave blank to use built-in defaults (Cupolex Slab + Timber Pile)
+                One spreadsheet for all report types. Use 5 columns:{'\n'}
+                Category | Inspection Type | Question | Answer Type | Options{'\n'}{'\n'}
+                Category values: structural, civil, surveying, meeting{'\n'}
+                Answer Type values: yes_no, select, yes_no_select, text{'\n'}{'\n'}
+                Leave blank to use built-in defaults.
               </Text>
             </View>
 
