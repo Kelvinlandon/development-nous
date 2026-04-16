@@ -886,15 +886,25 @@ export default function FormScreen() {
     setSubmitting(true);
     try {
       // Build inspection_responses array from the dynamic state
-      const inspResponses = Object.entries(inspectionResponses).map(([question, resp]) => ({
-        question,
-        answer: resp.answer,
-        detail: resp.detail || null,
-        answer_type: (inspectionItems[formData.inspection_type] || []).find(i => i.question === question)?.answer_type || 'yes_no',
-      }));
+      const inspResponses = Object.entries(inspectionResponses).map(([question, resp]) => {
+        // Find the answer_type from any inspection type's items
+        let answerType = 'yes_no';
+        for (const typeName of inspectionTypes) {
+          const found = (inspectionItems[typeName] || []).find(i => i.question === question);
+          if (found) { answerType = found.answer_type; break; }
+        }
+        return {
+          question,
+          answer: resp.answer,
+          detail: resp.detail || null,
+          answer_type: answerType,
+        };
+      });
       
       const submitData = {
         ...formData,
+        inspection_type: inspectionTypes.join(', '),
+        building_consent_inspection: !!formData.report_purpose,
         inspection_responses: inspResponses,
       };
       
@@ -1733,47 +1743,17 @@ export default function FormScreen() {
       </View>
 
       <View style={styles.inspectionContent}>
-          {/* Dynamic Inspection Type Selector */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Inspection Type</Text>
-            {inspectionTypes.map((typeName) => (
-              <TouchableOpacity
-                key={typeName}
-                style={[
-                  styles.inspectionOption,
-                  formData.inspection_type === typeName && styles.inspectionApproved,
-                ]}
-                onPress={() => {
-                  updateField('inspection_type', typeName);
-                  // Reset responses when switching type
-                  setInspectionResponses({});
-                }}
-              >
-                <View style={[
-                  styles.inspectionRadio,
-                  formData.inspection_type === typeName && { borderColor: '#4CAF50', backgroundColor: '#4CAF50' },
-                ]}>
-                  {formData.inspection_type === typeName && <View style={styles.inspectionRadioDot} />}
-                </View>
-                <Text style={[
-                  styles.inspectionOptionText,
-                  formData.inspection_type === typeName && { fontWeight: '700', color: '#2E7D32' },
-                ]}>{typeName}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Dynamic Inspection Sub-fields */}
-          {formData.inspection_type && inspectionItems[formData.inspection_type] && (
-            <View style={styles.pendingSubFields}>
+          {/* All Inspection Types Expanded */}
+          {inspectionTypes.map((typeName) => (
+            <View key={typeName} style={[styles.pendingSubFields, { marginBottom: 16 }]}>
               <Text style={[styles.label, { fontSize: 15, fontWeight: '700', marginBottom: 12, color: '#2E7D32' }]}>
-                {formData.inspection_type} Details
+                {typeName}
               </Text>
-              {inspectionItems[formData.inspection_type].map((item, index) =>
+              {(inspectionItems[typeName] || []).map((item, index) =>
                 renderDynamicInspectionItem(item, index)
               )}
             </View>
-          )}
+          ))}
 
           {/* Inspection Notes */}
           <View style={styles.inputGroup}>
