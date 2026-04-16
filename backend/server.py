@@ -33,22 +33,78 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
 # ================== Default Inspection Items ==================
+# Category: structural (Building Consent Inspection), civil, surveying, meeting
 DEFAULT_INSPECTION_ITEMS = [
-    {"inspection_type": "Cupolex Slab", "question": "Cupolex Hardware as per documentation?", "answer_type": "yes_no", "options": ""},
-    {"inspection_type": "Cupolex Slab", "question": "Reentrant corner detailing steel?", "answer_type": "yes_no", "options": ""},
-    {"inspection_type": "Cupolex Slab", "question": "Slab mesh steel as per approved BC docs?", "answer_type": "yes_no_select", "options": "SE62, SE72, SE82"},
-    {"inspection_type": "Cupolex Slab", "question": "Edge beam reinforcement as per approved BC docs?", "answer_type": "yes_no_select", "options": "3 D12, 4 D12, 3 D16, 4 D16"},
-    {"inspection_type": "Cupolex Slab", "question": "Penetration detailing steel correct? (D12 steel)", "answer_type": "yes_no", "options": ""},
-    {"inspection_type": "Cupolex Slab", "question": "Shower step down detailing correct?", "answer_type": "yes_no", "options": ""},
-    {"inspection_type": "Cupolex Slab", "question": "Concrete Strength", "answer_type": "select", "options": "20 MPa, 25 MPa, 30 MPa, 32 MPa"},
-    {"inspection_type": "Cupolex Slab", "question": "Dramix fibre reinforcing required?", "answer_type": "yes_no", "options": ""},
-    {"inspection_type": "Timber Pile", "question": "Bearing Capacity", "answer_type": "select", "options": "> 200 kPa, > 300 kPa"},
-    {"inspection_type": "Timber Pile", "question": "Pile layout as per plan?", "answer_type": "yes_no", "options": ""},
-    {"inspection_type": "Timber Pile", "question": "Hole Diameter (mm)", "answer_type": "select", "options": "400, 450, 500, 600"},
-    {"inspection_type": "Timber Pile", "question": "Hole Depth (mm)", "answer_type": "select", "options": "400, 450, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600"},
-    {"inspection_type": "Timber Pile", "question": "Anchor piles provided as per plan?", "answer_type": "yes_no", "options": ""},
-    {"inspection_type": "Timber Pile", "question": "Bearers as per documentation?", "answer_type": "yes_no", "options": ""},
+    # Structural - Cupolex Slab
+    {"category": "structural", "inspection_type": "Cupolex Slab", "question": "Cupolex Hardware as per documentation?", "answer_type": "yes_no", "options": ""},
+    {"category": "structural", "inspection_type": "Cupolex Slab", "question": "Reentrant corner detailing steel?", "answer_type": "yes_no", "options": ""},
+    {"category": "structural", "inspection_type": "Cupolex Slab", "question": "Slab mesh steel as per approved BC docs?", "answer_type": "yes_no_select", "options": "SE62, SE72, SE82"},
+    {"category": "structural", "inspection_type": "Cupolex Slab", "question": "Edge beam reinforcement as per approved BC docs?", "answer_type": "yes_no_select", "options": "3 D12, 4 D12, 3 D16, 4 D16"},
+    {"category": "structural", "inspection_type": "Cupolex Slab", "question": "Penetration detailing steel correct? (D12 steel)", "answer_type": "yes_no", "options": ""},
+    {"category": "structural", "inspection_type": "Cupolex Slab", "question": "Shower step down detailing correct?", "answer_type": "yes_no", "options": ""},
+    {"category": "structural", "inspection_type": "Cupolex Slab", "question": "Concrete Strength", "answer_type": "select", "options": "20 MPa, 25 MPa, 30 MPa, 32 MPa"},
+    {"category": "structural", "inspection_type": "Cupolex Slab", "question": "Dramix fibre reinforcing required?", "answer_type": "yes_no", "options": ""},
+    # Structural - Timber Pile
+    {"category": "structural", "inspection_type": "Timber Pile", "question": "Bearing Capacity", "answer_type": "select", "options": "> 200 kPa, > 300 kPa"},
+    {"category": "structural", "inspection_type": "Timber Pile", "question": "Pile layout as per plan?", "answer_type": "yes_no", "options": ""},
+    {"category": "structural", "inspection_type": "Timber Pile", "question": "Hole Diameter (mm)", "answer_type": "select", "options": "400, 450, 500, 600"},
+    {"category": "structural", "inspection_type": "Timber Pile", "question": "Hole Depth (mm)", "answer_type": "select", "options": "400, 450, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600"},
+    {"category": "structural", "inspection_type": "Timber Pile", "question": "Anchor piles provided as per plan?", "answer_type": "yes_no", "options": ""},
+    {"category": "structural", "inspection_type": "Timber Pile", "question": "Bearers as per documentation?", "answer_type": "yes_no", "options": ""},
+    # Civil - Earthworks
+    {"category": "civil", "inspection_type": "Earthworks", "question": "Excavation to correct depth?", "answer_type": "yes_no", "options": ""},
+    {"category": "civil", "inspection_type": "Earthworks", "question": "Fill compaction to specification?", "answer_type": "yes_no", "options": ""},
+    {"category": "civil", "inspection_type": "Earthworks", "question": "Subgrade preparation adequate?", "answer_type": "yes_no", "options": ""},
+    # Civil - Drainage
+    {"category": "civil", "inspection_type": "Drainage", "question": "Pipe grade as per design?", "answer_type": "yes_no", "options": ""},
+    {"category": "civil", "inspection_type": "Drainage", "question": "Bedding material correct?", "answer_type": "yes_no", "options": ""},
+    {"category": "civil", "inspection_type": "Drainage", "question": "Manhole construction compliant?", "answer_type": "yes_no", "options": ""},
+    # Surveying
+    {"category": "surveying", "inspection_type": "Set-Out", "question": "Boundary pegs verified?", "answer_type": "yes_no", "options": ""},
+    {"category": "surveying", "inspection_type": "Set-Out", "question": "Building set-out confirmed?", "answer_type": "yes_no", "options": ""},
+    {"category": "surveying", "inspection_type": "Set-Out", "question": "Levels checked to benchmark?", "answer_type": "yes_no", "options": ""},
+    {"category": "surveying", "inspection_type": "Level Check", "question": "Floor levels within tolerance?", "answer_type": "yes_no", "options": ""},
+    {"category": "surveying", "inspection_type": "Level Check", "question": "Site levels as per plan?", "answer_type": "yes_no", "options": ""},
+    # Meeting
+    {"category": "meeting", "inspection_type": "Site Meeting", "question": "Design issues discussed?", "answer_type": "yes_no", "options": ""},
+    {"category": "meeting", "inspection_type": "Site Meeting", "question": "Construction progress reviewed?", "answer_type": "yes_no", "options": ""},
+    {"category": "meeting", "inspection_type": "Site Meeting", "question": "Coordination issues identified?", "answer_type": "yes_no", "options": ""},
+    {"category": "meeting", "inspection_type": "Site Meeting", "question": "Changes to works discussed?", "answer_type": "yes_no", "options": ""},
 ]
+
+# Report purpose definitions
+REPORT_PURPOSES = {
+    "general_hs": {
+        "button_label": "General Site Visit/Health and Safety",
+        "formal_purpose": "To observe site conditions and health & safety compliance and ensure we are meeting our obligations on site.",
+        "pdf_header": "General Site Visit & Health and Safety Review",
+        "pdf_metadata": "Purpose: General site observation and information gathering",
+    },
+    "civil": {
+        "button_label": "Civil Construction Inspection",
+        "formal_purpose": "To inspect civil engineering works for general compliance with approved drawings, specifications, and consent conditions.",
+        "pdf_header": "Civil Engineering Construction Inspection",
+        "pdf_metadata": "Purpose: Civil works compliance inspection",
+    },
+    "surveying": {
+        "button_label": "Surveying / Set-Out",
+        "formal_purpose": "To undertake surveying activities including measurement, level verification, or set-out.",
+        "pdf_header": "Surveying & Dimensional Verification",
+        "pdf_metadata": "Purpose: Surveying and dimensional verification",
+    },
+    "structural": {
+        "button_label": "Structural Inspection",
+        "formal_purpose": "To inspect structural elements for general conformance with the structural design documentation and NZ Building Code.",
+        "pdf_header": "Structural Engineering Inspection",
+        "pdf_metadata": "Purpose: Structural engineering inspection",
+    },
+    "meeting": {
+        "button_label": "Site Meeting",
+        "formal_purpose": "To attend an on-site meeting with project stakeholders to discuss design, progress, coordination, or proposed changes.",
+        "pdf_header": "On-Site Coordination Meeting",
+        "pdf_metadata": "Purpose: On-site coordination meeting",
+    },
+}
 
 # Create the main app without a prefix
 app = FastAPI()
@@ -111,6 +167,7 @@ class SiteVisitReport(BaseModel):
     # Header Information
     staff_members: str
     date: str
+    report_purpose: Optional[str] = None  # additional purpose: civil, surveying, structural, meeting
     job_no_name: str
     job_address: str = ""
     departure_office: Optional[str] = None
@@ -184,6 +241,7 @@ class SitePhotoCreate(BaseModel):
 class SiteVisitReportCreate(BaseModel):
     staff_members: str
     date: str
+    report_purpose: Optional[str] = None  # additional purpose: civil, surveying, structural, meeting
     job_no_name: str
     job_address: str = ""
     departure_office: Optional[str] = None
@@ -286,9 +344,12 @@ class EmailResponse(BaseModel):
 
 # ================== PDF Generation ==================
 
-def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
-    """Generate a beautiful PDF from the site visit report"""
+def generate_pdf(report: SiteVisitReport, settings: AppSettings, purpose_type: str = "general_hs") -> bytes:
+    """Generate a PDF from the site visit report. purpose_type controls which sections to include."""
     buffer = BytesIO()
+    
+    purpose_info = REPORT_PURPOSES.get(purpose_type, REPORT_PURPOSES["general_hs"])
+    is_hs = purpose_type == "general_hs"
     
     # Colors
     GREEN = colors.HexColor('#4CAF50')
@@ -417,6 +478,15 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
     story.append(Paragraph("Site Information", section_style))
     story.append(Spacer(1, 4))
     
+    # Add purpose header
+    purpose_header = purpose_info["pdf_header"]
+    purpose_meta = purpose_info["pdf_metadata"]
+    story.insert(0, Spacer(1, 4))
+    story.insert(0, Paragraph(purpose_meta, ParagraphStyle('PurposeMeta', parent=normal_style, fontSize=9, textColor=GRAY, alignment=1)))
+    story.insert(0, Spacer(1, 2))
+    story.insert(0, Paragraph(purpose_header, ParagraphStyle('PurposeTitle', parent=section_style, fontSize=16, textColor=DARK_GREEN, alignment=1)))
+    story.insert(0, Spacer(1, 6))
+    
     site_data = [
         [Paragraph("<b>Staff Member(s)</b>", small_style), Paragraph(report.staff_members, normal_style),
          Paragraph("<b>Date</b>", small_style), Paragraph(report.date, normal_style)],
@@ -487,281 +557,282 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings) -> bytes:
         ]))
         story.append(desc_table)
     
-    # ---- Risk / Hazard Section ----
-    story.append(Spacer(1, 4))
-    story.append(Paragraph("Risk / Hazard / Incident Reporting", section_style))
-    story.append(Spacer(1, 4))
-    
-    hazard_text = report.risks_hazards_incidents or 'None reported'
-    toolbox_text = "Yes" if report.toolbox_talk_required else "No"
-    if report.toolbox_talk_notes:
-        toolbox_text += f" — {report.toolbox_talk_notes}"
-    
-    hazard_data = [
-        [Paragraph("<b>Recorded Issues</b>", small_style), Paragraph(hazard_text, normal_style)],
-        [Paragraph("<b>Toolbox Talk Required</b>", small_style), Paragraph(toolbox_text, normal_style)],
-    ]
-    hazard_table = Table(hazard_data, colWidths=[120, 320])
-    hazard_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#FFF3E0')),
-        ('BOX', (0, 0), (-1, -1), 0.5, ORANGE),
-        ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#FFE0B2')),
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('TOPPADDING', (0, 0), (-1, -1), 6),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-        ('LEFTPADDING', (0, 0), (-1, -1), 8),
-    ]))
-    story.append(hazard_table)
-    
-    # ---- Safety Checklist ----
-    story.append(Spacer(1, 4))
-    story.append(Paragraph("General Site Safety Checklist", section_style))
-    story.append(Spacer(1, 4))
-    
-    if report.checklist_comments:
-        story.append(Paragraph(f"<b>General Comments:</b> {report.checklist_comments}", normal_style))
-        story.append(Spacer(1, 6))
-    
-    checklist_header = [
-        Paragraph("<b>Question</b>", ParagraphStyle('CH', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold')),
-        Paragraph("<b>Response</b>", ParagraphStyle('CH2', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold', alignment=TA_CENTER)),
-        Paragraph("<b>Notes</b>", ParagraphStyle('CH3', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold'))
-    ]
-    checklist_data = [checklist_header]
-    for item in report.safety_checklist:
-        answer_display = item.answer.upper() if item.answer else "-"
-        # Color-code the answer
-        if item.answer == 'yes':
-            ans_color = DARK_GREEN
-        elif item.answer == 'no':
-            ans_color = RED
-        else:
-            ans_color = ORANGE
-        
-        answer_para = Paragraph(
-            f"<b>{answer_display}</b>",
-            ParagraphStyle('Ans', parent=small_style, textColor=ans_color, alignment=TA_CENTER, fontSize=8, fontName='Helvetica-Bold')
-        )
-        
-        checklist_data.append([
-            Paragraph(item.question, ParagraphStyle('Q', parent=normal_style, fontSize=8)),
-            answer_para,
-            Paragraph(item.notes or "", ParagraphStyle('N', parent=small_style, fontSize=7, textColor=colors.HexColor('#555555')))
-        ])
-    
-    checklist_table = Table(checklist_data, colWidths=[230, 50, 160])
-    checklist_table.setStyle(TableStyle([
-        ('FONTSIZE', (0, 0), (-1, -1), 7),
-        ('BACKGROUND', (0, 0), (-1, 0), DARK_GREEN),
-        ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
-        ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#c8e6c9')),
-        ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ('LEFTPADDING', (0, 0), (-1, -1), 6),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, colors.HexColor('#f8fdf8')]),
-    ]))
-    story.append(checklist_table)
-    
-    if report.electrical_equipment_list:
-        story.append(Spacer(1, 6))
-        story.append(Paragraph(f"<b>Electrical Equipment Used:</b> {report.electrical_equipment_list}", normal_style))
-    
-    # ---- Building Consent Inspection ----
-    if report.building_consent_inspection:
-        story.append(Spacer(1, 8))
-        story.append(Paragraph("Building Consent Requirement Inspection", section_style))
+    # ---- Risk / Hazard Section (H&S only) ----
+    if is_hs:
         story.append(Spacer(1, 4))
-        
-        # Check if we have dynamic inspection_responses (new system)
-        has_dynamic = hasattr(report, 'inspection_responses') and report.inspection_responses and len(report.inspection_responses) > 0
-        
-        if has_dynamic:
-            # New dynamic system - render from inspection_responses
-            insp_type = report.inspection_type or "Not specified"
-            type_data = [[Paragraph("<b>Inspection Type</b>", small_style)], [Paragraph(insp_type, normal_style)]]
-            type_table = Table(type_data, colWidths=[440])
-            type_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), LIGHT_GREEN),
-                ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
-                ('TOPPADDING', (0, 0), (-1, -1), 5),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-                ('LEFTPADDING', (0, 0), (-1, -1), 8),
-            ]))
-            story.append(type_table)
-            story.append(Spacer(1, 4))
-            
-            # Build table from dynamic responses
-            detail_data = [
-                [Paragraph("<b>Item</b>", ParagraphStyle('DTH', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold')),
-                 Paragraph("<b>Value</b>", ParagraphStyle('DTH2', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold'))],
-            ]
-            for resp in report.inspection_responses:
-                q = resp.get('question', '') if isinstance(resp, dict) else resp.question
-                a = resp.get('answer', '-') if isinstance(resp, dict) else resp.answer
-                d = resp.get('detail', '') if isinstance(resp, dict) else (resp.detail or '')
-                val = a or "-"
-                if d:
-                    val += f" ({d})"
-                detail_data.append([
-                    Paragraph(q, normal_style),
-                    Paragraph(val, normal_style),
-                ])
-            
-            if len(detail_data) > 1:
-                detail_table = Table(detail_data, colWidths=[220, 220])
-                detail_table.setStyle(TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, 0), DARK_GREEN),
-                    ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#c8e6c9')),
-                    ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
-                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                    ('TOPPADDING', (0, 0), (-1, -1), 4),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-                    ('LEFTPADDING', (0, 0), (-1, -1), 6),
-                    ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, colors.HexColor('#f8fdf8')]),
-                ]))
-                story.append(detail_table)
-                story.append(Spacer(1, 4))
-        else:
-            # Legacy system - render from individual fields
-            insp_type = "Cupolex Slab Inspection" if report.inspection_type == "cupolex" else "Timber Pile Inspection" if report.inspection_type == "timber_pile" else report.inspection_type or "Not specified"
-            type_data = [[Paragraph("<b>Inspection Type</b>", small_style)], [Paragraph(insp_type, normal_style)]]
-            type_table = Table(type_data, colWidths=[440])
-            type_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), LIGHT_GREEN),
-                ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
-                ('TOPPADDING', (0, 0), (-1, -1), 5),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-                ('LEFTPADDING', (0, 0), (-1, -1), 8),
-            ]))
-            story.append(type_table)
-            story.append(Spacer(1, 4))
-            
-            # Timber pile details (legacy)
-            if report.inspection_type == "timber_pile":
-                timber_data = [
-                    [Paragraph("<b>Item</b>", ParagraphStyle('TH', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold')),
-                     Paragraph("<b>Value</b>", ParagraphStyle('TH2', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold'))],
-                    [Paragraph("Bearing Capacity", normal_style), Paragraph(report.timber_bearing_capacity or "-", normal_style)],
-                    [Paragraph("Pile Layout as per Plan", normal_style), Paragraph(report.timber_pile_layout_as_per_plan or "-", normal_style)],
-                    [Paragraph("Hole Diameter", normal_style), Paragraph(f"{report.timber_hole_diameter} mm" if report.timber_hole_diameter else "-", normal_style)],
-                    [Paragraph("Hole Depth", normal_style), Paragraph(f"{report.timber_hole_depth} mm" if report.timber_hole_depth else "-", normal_style)],
-                    [Paragraph("Anchor Piles as per Plan", normal_style), Paragraph(report.timber_anchor_piles_as_per_plan or "-", normal_style)],
-                    [Paragraph("Bearers as per Documentation", normal_style), Paragraph(report.timber_bearers_as_per_documentation or "-", normal_style)],
-                ]
-                timber_table = Table(timber_data, colWidths=[220, 220])
-                timber_table.setStyle(TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, 0), DARK_GREEN),
-                    ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#c8e6c9')),
-                    ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
-                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                    ('TOPPADDING', (0, 0), (-1, -1), 4),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-                    ('LEFTPADDING', (0, 0), (-1, -1), 6),
-                    ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, colors.HexColor('#f8fdf8')]),
-                ]))
-                story.append(timber_table)
-                story.append(Spacer(1, 4))
-            
-            # Cupolex slab details (legacy)
-            if report.inspection_type == "cupolex":
-                mesh_val = f"{report.cupolex_slab_mesh_approved or '-'}"
-                if report.cupolex_slab_mesh_type:
-                    mesh_val += f" ({report.cupolex_slab_mesh_type})"
-                edge_val = f"{report.cupolex_edge_beam_approved or '-'}"
-                if report.cupolex_edge_beam_type:
-                    edge_val += f" ({report.cupolex_edge_beam_type})"
-                cupolex_data = [
-                    [Paragraph("<b>Item</b>", ParagraphStyle('CTH', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold')),
-                     Paragraph("<b>Value</b>", ParagraphStyle('CTH2', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold'))],
-                    [Paragraph("Cupolex Hardware as per Documentation", normal_style), Paragraph(report.cupolex_hardware_as_per_docs or "-", normal_style)],
-                    [Paragraph("Reentrant Corner Detailing Steel", normal_style), Paragraph(report.cupolex_reentrant_corner_steel or "-", normal_style)],
-                    [Paragraph("Slab Mesh Steel as per Approved BC Docs", normal_style), Paragraph(mesh_val, normal_style)],
-                    [Paragraph("Edge Beam Reinforcement as per Approved BC Docs", normal_style), Paragraph(edge_val, normal_style)],
-                    [Paragraph("Penetration Detailing Steel Correct (D12)", normal_style), Paragraph(report.cupolex_penetration_detailing_correct or "-", normal_style)],
-                    [Paragraph("Shower Step Down Detailing Correct", normal_style), Paragraph(report.cupolex_shower_step_down_correct or "-", normal_style)],
-                    [Paragraph("Concrete Strength", normal_style), Paragraph(report.cupolex_concrete_strength or "-", normal_style)],
-                    [Paragraph("Dramix Fibre Reinforcing Required", normal_style), Paragraph(report.cupolex_dramix_fibre_required or "-", normal_style)],
-                ]
-                cupolex_table = Table(cupolex_data, colWidths=[220, 220])
-                cupolex_table.setStyle(TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, 0), DARK_GREEN),
-                    ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#c8e6c9')),
-                    ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
-                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                    ('TOPPADDING', (0, 0), (-1, -1), 4),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-                    ('LEFTPADDING', (0, 0), (-1, -1), 6),
-                    ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, colors.HexColor('#f8fdf8')]),
-                ]))
-                story.append(cupolex_table)
-                story.append(Spacer(1, 4))
-        
-        if report.inspection_notes:
-            notes_data = [[Paragraph("<b>Inspection Notes</b>", small_style)], [Paragraph(report.inspection_notes, normal_style)]]
-            notes_table = Table(notes_data, colWidths=[440])
-            notes_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), LIGHT_GREEN),
-                ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
-                ('TOPPADDING', (0, 0), (-1, -1), 5),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-                ('LEFTPADDING', (0, 0), (-1, -1), 8),
-            ]))
-            story.append(notes_table)
+        story.append(Paragraph("Risk / Hazard / Incident Reporting", section_style))
+        story.append(Spacer(1, 4))
+        hazard_text = report.risks_hazards_incidents or 'None reported'
+        toolbox_text = "Yes" if report.toolbox_talk_required else "No"
+        if report.toolbox_talk_notes:
+            toolbox_text += f" — {report.toolbox_talk_notes}"
+    
+        hazard_data = [
+            [Paragraph("<b>Recorded Issues</b>", small_style), Paragraph(hazard_text, normal_style)],
+            [Paragraph("<b>Toolbox Talk Required</b>", small_style), Paragraph(toolbox_text, normal_style)],
+        ]
+        hazard_table = Table(hazard_data, colWidths=[120, 320])
+        hazard_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#FFF3E0')),
+            ('BOX', (0, 0), (-1, -1), 0.5, ORANGE),
+            ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#FFE0B2')),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('TOPPADDING', (0, 0), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),
+        ]))
+        story.append(hazard_table)
+    
+        # ---- Safety Checklist ----
+        story.append(Spacer(1, 4))
+        story.append(Paragraph("General Site Safety Checklist", section_style))
+        story.append(Spacer(1, 4))
+    
+        if report.checklist_comments:
+            story.append(Paragraph(f"<b>General Comments:</b> {report.checklist_comments}", normal_style))
             story.append(Spacer(1, 6))
-        
-        # Inspection result
-        if report.inspection_result:
-            if report.inspection_result == 'approved':
-                result_text = "INSPECTION APPROVED — OK TO PROCEED"
-                result_color = DARK_GREEN
-                result_bg = LIGHT_GREEN
-                border_color = GREEN
-            elif report.inspection_result == 'pending':
-                result_text = "INSPECTION APPROVAL PENDING COMPLETION OF ABOVE"
-                result_color = colors.HexColor('#E65100')
-                result_bg = colors.HexColor('#FFF3E0')
-                border_color = ORANGE
+    
+        checklist_header = [
+            Paragraph("<b>Question</b>", ParagraphStyle('CH', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold')),
+            Paragraph("<b>Response</b>", ParagraphStyle('CH2', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold', alignment=TA_CENTER)),
+            Paragraph("<b>Notes</b>", ParagraphStyle('CH3', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold'))
+        ]
+        checklist_data = [checklist_header]
+        for item in report.safety_checklist:
+            answer_display = item.answer.upper() if item.answer else "-"
+            # Color-code the answer
+            if item.answer == 'yes':
+                ans_color = DARK_GREEN
+            elif item.answer == 'no':
+                ans_color = RED
             else:
-                result_text = "REINSPECTION REQUIRED"
-                result_color = colors.HexColor('#C62828')
-                result_bg = colors.HexColor('#FFEBEE')
-                border_color = RED
-            
-            result_style = ParagraphStyle(
-                'InspResult',
-                parent=normal_style,
-                fontSize=11,
-                fontName='Helvetica-Bold',
-                textColor=result_color,
-                alignment=TA_CENTER
+                ans_color = ORANGE
+        
+            answer_para = Paragraph(
+                f"<b>{answer_display}</b>",
+                ParagraphStyle('Ans', parent=small_style, textColor=ans_color, alignment=TA_CENTER, fontSize=8, fontName='Helvetica-Bold')
             )
-            result_data = [[Paragraph(result_text, result_style)]]
-            result_table = Table(result_data, colWidths=[440])
-            result_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, -1), result_bg),
-                ('BOX', (0, 0), (-1, -1), 2, border_color),
-                ('TOPPADDING', (0, 0), (-1, -1), 10),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
-            ]))
-            story.append(result_table)
+        
+            checklist_data.append([
+                Paragraph(item.question, ParagraphStyle('Q', parent=normal_style, fontSize=8)),
+                answer_para,
+                Paragraph(item.notes or "", ParagraphStyle('N', parent=small_style, fontSize=7, textColor=colors.HexColor('#555555')))
+            ])
+    
+        checklist_table = Table(checklist_data, colWidths=[230, 50, 160])
+        checklist_table.setStyle(TableStyle([
+            ('FONTSIZE', (0, 0), (-1, -1), 7),
+            ('BACKGROUND', (0, 0), (-1, 0), DARK_GREEN),
+            ('TEXTCOLOR', (0, 0), (-1, 0), WHITE),
+            ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#c8e6c9')),
+            ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ('LEFTPADDING', (0, 0), (-1, -1), 6),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, colors.HexColor('#f8fdf8')]),
+        ]))
+        story.append(checklist_table)
+    
+        if report.electrical_equipment_list:
+            story.append(Spacer(1, 6))
+            story.append(Paragraph(f"<b>Electrical Equipment Used:</b> {report.electrical_equipment_list}", normal_style))
+    
+    # ---- Inspection / Purpose-Specific Section ----
+    if not is_hs and report.building_consent_inspection:
+        if report.building_consent_inspection:
+            story.append(Spacer(1, 8))
+            story.append(Paragraph("Building Consent Requirement Inspection", section_style))
+            story.append(Spacer(1, 4))
+        
+            # Check if we have dynamic inspection_responses (new system)
+            has_dynamic = hasattr(report, 'inspection_responses') and report.inspection_responses and len(report.inspection_responses) > 0
+        
+            if has_dynamic:
+                # New dynamic system - render from inspection_responses
+                insp_type = report.inspection_type or "Not specified"
+                type_data = [[Paragraph("<b>Inspection Type</b>", small_style)], [Paragraph(insp_type, normal_style)]]
+                type_table = Table(type_data, colWidths=[440])
+                type_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), LIGHT_GREEN),
+                    ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
+                    ('TOPPADDING', (0, 0), (-1, -1), 5),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 8),
+                ]))
+                story.append(type_table)
+                story.append(Spacer(1, 4))
             
-            # Pending sub-fields
-            if report.inspection_result == 'pending':
+                # Build table from dynamic responses
+                detail_data = [
+                    [Paragraph("<b>Item</b>", ParagraphStyle('DTH', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold')),
+                     Paragraph("<b>Value</b>", ParagraphStyle('DTH2', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold'))],
+                ]
+                for resp in report.inspection_responses:
+                    q = resp.get('question', '') if isinstance(resp, dict) else resp.question
+                    a = resp.get('answer', '-') if isinstance(resp, dict) else resp.answer
+                    d = resp.get('detail', '') if isinstance(resp, dict) else (resp.detail or '')
+                    val = a or "-"
+                    if d:
+                        val += f" ({d})"
+                    detail_data.append([
+                        Paragraph(q, normal_style),
+                        Paragraph(val, normal_style),
+                    ])
+            
+                if len(detail_data) > 1:
+                    detail_table = Table(detail_data, colWidths=[220, 220])
+                    detail_table.setStyle(TableStyle([
+                        ('BACKGROUND', (0, 0), (-1, 0), DARK_GREEN),
+                        ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#c8e6c9')),
+                        ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
+                        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                        ('TOPPADDING', (0, 0), (-1, -1), 4),
+                        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, colors.HexColor('#f8fdf8')]),
+                    ]))
+                    story.append(detail_table)
+                    story.append(Spacer(1, 4))
+            else:
+                # Legacy system - render from individual fields
+                insp_type = "Cupolex Slab Inspection" if report.inspection_type == "cupolex" else "Timber Pile Inspection" if report.inspection_type == "timber_pile" else report.inspection_type or "Not specified"
+                type_data = [[Paragraph("<b>Inspection Type</b>", small_style)], [Paragraph(insp_type, normal_style)]]
+                type_table = Table(type_data, colWidths=[440])
+                type_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), LIGHT_GREEN),
+                    ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
+                    ('TOPPADDING', (0, 0), (-1, -1), 5),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 8),
+                ]))
+                story.append(type_table)
+                story.append(Spacer(1, 4))
+            
+                # Timber pile details (legacy)
+                if report.inspection_type == "timber_pile":
+                    timber_data = [
+                        [Paragraph("<b>Item</b>", ParagraphStyle('TH', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold')),
+                         Paragraph("<b>Value</b>", ParagraphStyle('TH2', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold'))],
+                        [Paragraph("Bearing Capacity", normal_style), Paragraph(report.timber_bearing_capacity or "-", normal_style)],
+                        [Paragraph("Pile Layout as per Plan", normal_style), Paragraph(report.timber_pile_layout_as_per_plan or "-", normal_style)],
+                        [Paragraph("Hole Diameter", normal_style), Paragraph(f"{report.timber_hole_diameter} mm" if report.timber_hole_diameter else "-", normal_style)],
+                        [Paragraph("Hole Depth", normal_style), Paragraph(f"{report.timber_hole_depth} mm" if report.timber_hole_depth else "-", normal_style)],
+                        [Paragraph("Anchor Piles as per Plan", normal_style), Paragraph(report.timber_anchor_piles_as_per_plan or "-", normal_style)],
+                        [Paragraph("Bearers as per Documentation", normal_style), Paragraph(report.timber_bearers_as_per_documentation or "-", normal_style)],
+                    ]
+                    timber_table = Table(timber_data, colWidths=[220, 220])
+                    timber_table.setStyle(TableStyle([
+                        ('BACKGROUND', (0, 0), (-1, 0), DARK_GREEN),
+                        ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#c8e6c9')),
+                        ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
+                        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                        ('TOPPADDING', (0, 0), (-1, -1), 4),
+                        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, colors.HexColor('#f8fdf8')]),
+                    ]))
+                    story.append(timber_table)
+                    story.append(Spacer(1, 4))
+            
+                # Cupolex slab details (legacy)
+                if report.inspection_type == "cupolex":
+                    mesh_val = f"{report.cupolex_slab_mesh_approved or '-'}"
+                    if report.cupolex_slab_mesh_type:
+                        mesh_val += f" ({report.cupolex_slab_mesh_type})"
+                    edge_val = f"{report.cupolex_edge_beam_approved or '-'}"
+                    if report.cupolex_edge_beam_type:
+                        edge_val += f" ({report.cupolex_edge_beam_type})"
+                    cupolex_data = [
+                        [Paragraph("<b>Item</b>", ParagraphStyle('CTH', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold')),
+                         Paragraph("<b>Value</b>", ParagraphStyle('CTH2', parent=small_style, textColor=WHITE, fontName='Helvetica-Bold'))],
+                        [Paragraph("Cupolex Hardware as per Documentation", normal_style), Paragraph(report.cupolex_hardware_as_per_docs or "-", normal_style)],
+                        [Paragraph("Reentrant Corner Detailing Steel", normal_style), Paragraph(report.cupolex_reentrant_corner_steel or "-", normal_style)],
+                        [Paragraph("Slab Mesh Steel as per Approved BC Docs", normal_style), Paragraph(mesh_val, normal_style)],
+                        [Paragraph("Edge Beam Reinforcement as per Approved BC Docs", normal_style), Paragraph(edge_val, normal_style)],
+                        [Paragraph("Penetration Detailing Steel Correct (D12)", normal_style), Paragraph(report.cupolex_penetration_detailing_correct or "-", normal_style)],
+                        [Paragraph("Shower Step Down Detailing Correct", normal_style), Paragraph(report.cupolex_shower_step_down_correct or "-", normal_style)],
+                        [Paragraph("Concrete Strength", normal_style), Paragraph(report.cupolex_concrete_strength or "-", normal_style)],
+                        [Paragraph("Dramix Fibre Reinforcing Required", normal_style), Paragraph(report.cupolex_dramix_fibre_required or "-", normal_style)],
+                    ]
+                    cupolex_table = Table(cupolex_data, colWidths=[220, 220])
+                    cupolex_table.setStyle(TableStyle([
+                        ('BACKGROUND', (0, 0), (-1, 0), DARK_GREEN),
+                        ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#c8e6c9')),
+                        ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
+                        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                        ('TOPPADDING', (0, 0), (-1, -1), 4),
+                        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [WHITE, colors.HexColor('#f8fdf8')]),
+                    ]))
+                    story.append(cupolex_table)
+                    story.append(Spacer(1, 4))
+        
+            if report.inspection_notes:
+                notes_data = [[Paragraph("<b>Inspection Notes</b>", small_style)], [Paragraph(report.inspection_notes, normal_style)]]
+                notes_table = Table(notes_data, colWidths=[440])
+                notes_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), LIGHT_GREEN),
+                    ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
+                    ('TOPPADDING', (0, 0), (-1, -1), 5),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 8),
+                ]))
+                story.append(notes_table)
                 story.append(Spacer(1, 6))
-                pending_items = []
-                evidence_text = "Evidence of work completion received: "
-                evidence_text += "YES" if report.evidence_received else "NO"
-                pending_items.append(Paragraph(f"<b>{evidence_text}</b>", normal_style))
-                if report.evidence_date:
-                    pending_items.append(Paragraph(f"<b>Date:</b> {report.evidence_date}", normal_style))
-                if report.evidence_signature:
-                    pending_items.append(Paragraph(f"<b>Signed:</b> {report.evidence_signature}", normal_style))
+        
+            # Inspection result
+            if report.inspection_result:
+                if report.inspection_result == 'approved':
+                    result_text = "INSPECTION APPROVED — OK TO PROCEED"
+                    result_color = DARK_GREEN
+                    result_bg = LIGHT_GREEN
+                    border_color = GREEN
+                elif report.inspection_result == 'pending':
+                    result_text = "INSPECTION APPROVAL PENDING COMPLETION OF ABOVE"
+                    result_color = colors.HexColor('#E65100')
+                    result_bg = colors.HexColor('#FFF3E0')
+                    border_color = ORANGE
+                else:
+                    result_text = "REINSPECTION REQUIRED"
+                    result_color = colors.HexColor('#C62828')
+                    result_bg = colors.HexColor('#FFEBEE')
+                    border_color = RED
+            
+                result_style = ParagraphStyle(
+                    'InspResult',
+                    parent=normal_style,
+                    fontSize=11,
+                    fontName='Helvetica-Bold',
+                    textColor=result_color,
+                    alignment=TA_CENTER
+                )
+                result_data = [[Paragraph(result_text, result_style)]]
+                result_table = Table(result_data, colWidths=[440])
+                result_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, -1), result_bg),
+                    ('BOX', (0, 0), (-1, -1), 2, border_color),
+                    ('TOPPADDING', (0, 0), (-1, -1), 10),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+                ]))
+                story.append(result_table)
+            
+                # Pending sub-fields
+                if report.inspection_result == 'pending':
+                    story.append(Spacer(1, 6))
+                    pending_items = []
+                    evidence_text = "Evidence of work completion received: "
+                    evidence_text += "YES" if report.evidence_received else "NO"
+                    pending_items.append(Paragraph(f"<b>{evidence_text}</b>", normal_style))
+                    if report.evidence_date:
+                        pending_items.append(Paragraph(f"<b>Date:</b> {report.evidence_date}", normal_style))
+                    if report.evidence_signature:
+                        pending_items.append(Paragraph(f"<b>Signed:</b> {report.evidence_signature}", normal_style))
                 
-                for item in pending_items:
-                    story.append(item)
-                    story.append(Spacer(1, 2))
+                    for item in pending_items:
+                        story.append(item)
+                        story.append(Spacer(1, 2))
     
     # ---- Declaration (keep together on one page) ----
     declaration_elements = []
@@ -1152,11 +1223,18 @@ async def sync_from_csv():
 # ================== Inspection Items Endpoints ==================
 
 @api_router.get("/inspection-items")
-async def get_inspection_items():
+async def get_inspection_items(category: str = None):
     """Get inspection items grouped by inspection type. Falls back to defaults if none synced."""
-    items = await db.inspection_items.find({}, {"_id": 0}).to_list(500)
+    query = {}
+    if category:
+        query["category"] = category
+    
+    items = await db.inspection_items.find(query, {"_id": 0}).to_list(500)
     if not items:
+        # Use defaults, filtered by category if specified
         items = DEFAULT_INSPECTION_ITEMS
+        if category:
+            items = [i for i in items if i.get("category") == category]
     
     # Group by inspection_type
     grouped = {}
@@ -1170,10 +1248,13 @@ async def get_inspection_items():
             "options": item.get("options", ""),
         })
     
-    # Build ordered list of types
     types = list(grouped.keys())
-    
     return {"types": types, "items": grouped}
+
+@api_router.get("/report-purposes")
+async def get_report_purposes():
+    """Get available report purpose types"""
+    return REPORT_PURPOSES
 
 @api_router.post("/sync-inspection-items")
 async def sync_inspection_items():
@@ -1224,18 +1305,21 @@ async def sync_inspection_items():
                               row.get('Type of Answer') or row.get('Answer') or 'yes_no')
                 options = (row.get('Options') or row.get('options') or
                           row.get('Choices') or row.get('choices') or '')
+                category = (row.get('Category') or row.get('category') or 'structural')
                 
                 # If no known columns, try positional
                 if not inspection_type.strip() and row:
                     vals = list(row.values())
                     if len(vals) >= 1:
-                        inspection_type = vals[0] or ''
+                        category = vals[0] or 'structural'
                     if len(vals) >= 2:
-                        question = vals[1] or ''
+                        inspection_type = vals[1] or ''
                     if len(vals) >= 3:
-                        answer_type = vals[2] or 'yes_no'
+                        question = vals[2] or ''
                     if len(vals) >= 4:
-                        options = vals[3] or ''
+                        answer_type = vals[3] or 'yes_no'
+                    if len(vals) >= 5:
+                        options = vals[4] or ''
                 
                 if inspection_type.strip() and question.strip():
                     # Normalize answer_type
@@ -1243,7 +1327,12 @@ async def sync_inspection_items():
                     if at not in ('yes_no', 'select', 'yes_no_select', 'text'):
                         at = 'yes_no'
                     
+                    cat = category.strip().lower()
+                    if cat not in ('structural', 'civil', 'surveying', 'meeting'):
+                        cat = 'structural'
+                    
                     await db.inspection_items.insert_one({
+                        "category": cat,
                         "inspection_type": inspection_type.strip(),
                         "question": question.strip(),
                         "answer_type": at,
@@ -1485,6 +1574,7 @@ def send_smtp_email(
     pdf_bytes: bytes = None,
     pdf_filename: str = None,
     attachments: list = None,  # List of (bytes, filename, mime_subtype) tuples
+    additional_attachments: list = None,  # List of (bytes, filename) tuples for extra PDFs
 ) -> None:
     """Send an email with attachments via SMTP (Gmail compatible)"""
     msg = MIMEMultipart('mixed')
@@ -1501,6 +1591,13 @@ def send_smtp_email(
         pdf_part = MIMEApplication(pdf_bytes, _subtype='pdf')
         pdf_part.add_header('Content-Disposition', 'attachment', filename=pdf_filename)
         msg.attach(pdf_part)
+    
+    # Attach additional PDFs
+    if additional_attachments:
+        for extra_bytes, extra_filename in additional_attachments:
+            extra_part = MIMEApplication(extra_bytes, _subtype='pdf')
+            extra_part.add_header('Content-Disposition', 'attachment', filename=extra_filename)
+            msg.attach(extra_part)
     
     # Attach additional files
     if attachments:
@@ -1640,15 +1737,24 @@ async def send_report_email(report_id: str, email_req: EmailRequest):
     # Check if SMTP is enabled and configured
     if settings_obj.smtp_enabled and settings_obj.smtp_host and settings_obj.smtp_username and settings_obj.smtp_password:
         try:
-            # Generate PDF
-            pdf_bytes = generate_pdf(report_obj, settings_obj)
-            pdf_filename = f"site_visit_{report_obj.job_no_name}_{report_obj.date}.pdf".replace(" ", "_").replace("/", "-")
+            # Always generate H&S PDF
+            hs_pdf_bytes = generate_pdf(report_obj, settings_obj, "general_hs")
+            hs_filename = f"HS_Report_{report_obj.job_no_name}_{report_obj.date}.pdf".replace(" ", "_").replace("/", "-")
+            
+            # Generate purpose-specific PDF if applicable
+            additional_pdfs = []
+            if report_obj.report_purpose and report_obj.report_purpose != "general_hs":
+                purpose_pdf = generate_pdf(report_obj, settings_obj, report_obj.report_purpose)
+                purpose_info = REPORT_PURPOSES.get(report_obj.report_purpose, {})
+                purpose_label = purpose_info.get("pdf_header", "Report").replace(" ", "_").replace("/", "-")
+                purpose_filename = f"{purpose_label}_{report_obj.job_no_name}_{report_obj.date}.pdf".replace(" ", "_").replace("/", "-")
+                additional_pdfs.append((purpose_pdf, purpose_filename))
             
             # Build email
             subject = f"Site Visit Report — {report_obj.job_no_name} — {report_obj.date}"
             html_body = build_email_html(report_obj, settings_obj)
             
-            # Send email
+            # Send email with all PDFs
             send_smtp_email(
                 smtp_host=settings_obj.smtp_host,
                 smtp_port=settings_obj.smtp_port,
@@ -1658,8 +1764,9 @@ async def send_report_email(report_id: str, email_req: EmailRequest):
                 recipient=recipient,
                 subject=subject,
                 html_body=html_body,
-                pdf_bytes=pdf_bytes,
-                pdf_filename=pdf_filename,
+                pdf_bytes=hs_pdf_bytes,
+                pdf_filename=hs_filename,
+                additional_attachments=additional_pdfs,
             )
             
             logger.info(f"Email sent successfully to {recipient} for report {report_id}")

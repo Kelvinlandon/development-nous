@@ -80,6 +80,7 @@ interface FormData {
   // Header
   staff_members: string;
   date: string;
+  report_purpose: string;
   job_no_name: string;
   job_address: string;
   job_address_lat: number | null;
@@ -388,6 +389,7 @@ export default function FormScreen() {
   const [formData, setFormData] = useState<FormData>({
     staff_members: '',
     date: todayString,
+    report_purpose: '',
     job_no_name: '',
     job_address: '',
     job_address_lat: null,
@@ -450,7 +452,22 @@ export default function FormScreen() {
     declaration_date: todayString,
   });
 
-  const steps = ['Site Info', 'Hazards', 'Safety', 'Inspection', 'Photos', 'Declare'];
+  const PURPOSE_LABELS: Record<string, string> = {
+    civil: 'Civil Inspection',
+    surveying: 'Survey',
+    structural: 'Structural',
+    meeting: 'Meeting',
+  };
+
+  const getSteps = () => {
+    const base = ['Site Info', 'Hazards', 'Safety'];
+    if (formData.report_purpose) {
+      base.push(PURPOSE_LABELS[formData.report_purpose] || 'Inspection');
+    }
+    base.push('Photos', 'Declare');
+    return base;
+  };
+  const steps = getSteps();
 
   const updateField = (field: keyof FormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -813,23 +830,22 @@ export default function FormScreen() {
   };
 
   const validateStep = (): boolean => {
-    switch (currentStep) {
-      case 0:
-        if (!formData.staff_members || !formData.date || !formData.job_no_name) {
-          Alert.alert('Required Fields', 'Please fill in Staff Member(s), Date, and Job No./Name');
-          return false;
-        }
-        break;
-      case 5: // Declaration step
-        if (!formData.staff_print_name) {
-          Alert.alert('Required Fields', 'Please enter your printed name');
-          return false;
-        }
-        if (!formData.signature_data) {
-          Alert.alert('Required Fields', 'Please provide your signature');
-          return false;
-        }
-        break;
+    const stepName = steps[currentStep];
+    if (stepName === 'Site Info') {
+      if (!formData.staff_members || !formData.date || !formData.job_no_name) {
+        Alert.alert('Required Fields', 'Please fill in Staff Member(s), Date, and Job No./Name');
+        return false;
+      }
+    }
+    if (stepName === 'Declare') {
+      if (!formData.staff_print_name) {
+        Alert.alert('Required Fields', 'Please enter your printed name');
+        return false;
+      }
+      if (!formData.signature_data) {
+        Alert.alert('Required Fields', 'Please provide your signature');
+        return false;
+      }
     }
     return true;
   };
@@ -945,8 +961,70 @@ export default function FormScreen() {
     </View>
   );
 
+  const REPORT_PURPOSES_INFO: Record<string, string> = {
+    structural: 'Inspect structural elements for conformance with design documentation',
+    civil: 'Inspect civil works for compliance with approved drawings and specs',
+    surveying: 'Verify measurements, levels, and set-out information',
+    meeting: 'Record meeting discussions, decisions, and action items',
+  };
+
+  const PURPOSE_OPTIONS = [
+    { key: 'civil', label: 'Civil Construction Inspection', icon: '🔧' },
+    { key: 'surveying', label: 'Surveying / Set-Out', icon: '📐' },
+    { key: 'structural', label: 'Structural Inspection', icon: '🏛️' },
+    { key: 'meeting', label: 'Site Meeting', icon: '🤝' },
+  ];
+
   const renderSiteInfoStep = () => (
     <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
+      {/* Report Purpose */}
+      <View style={[styles.inputGroup, { backgroundColor: '#E8F5E9', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#C8E6C9' }]}>
+        <Text style={[styles.label, { fontSize: 15, fontWeight: '700', color: '#2E7D32', marginBottom: 4 }]}>Report Purpose</Text>
+        <Text style={{ fontSize: 12, color: '#689F38', marginBottom: 10 }}>H&S Report is always included. Select an additional report type:</Text>
+        {PURPOSE_OPTIONS.map((opt) => (
+          <TouchableOpacity
+            key={opt.key}
+            style={[
+              {
+                flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 10,
+                backgroundColor: formData.report_purpose === opt.key ? '#C8E6C9' : '#fff',
+                borderWidth: 1, borderColor: formData.report_purpose === opt.key ? '#4CAF50' : '#E0E0E0',
+                marginBottom: 8,
+              },
+            ]}
+            onPress={() => {
+              const newVal = formData.report_purpose === opt.key ? '' : opt.key;
+              updateField('report_purpose', newVal);
+              // Auto-set building_consent_inspection for structural
+              if (newVal === 'structural') {
+                updateField('building_consent_inspection', true);
+              } else if (newVal === '') {
+                updateField('building_consent_inspection', false);
+              }
+              // Fetch inspection items for the selected purpose category
+              if (newVal) {
+                axios.get(`${API_URL}/api/inspection-items?category=${newVal}`).then(res => {
+                  setInspectionTypes(res.data.types || []);
+                  setInspectionItems(res.data.items || {});
+                  setInspectionResponses({});
+                  updateField('inspection_type', '');
+                }).catch(() => {});
+              }
+            }}
+          >
+            <Text style={{ fontSize: 20, marginRight: 10 }}>{opt.icon}</Text>
+            <Text style={{
+              flex: 1, fontSize: 14,
+              fontWeight: formData.report_purpose === opt.key ? '700' : '400',
+              color: formData.report_purpose === opt.key ? '#2E7D32' : '#333',
+            }}>{opt.label}</Text>
+            {formData.report_purpose === opt.key && (
+              <Ionicons name="checkmark-circle" size={22} color="#4CAF50" />
+            )}
+          </TouchableOpacity>
+        ))}
+      </View>
+
       <View style={styles.inputGroup}>
         <Text style={styles.label}>Staff Member(s) *</Text>
         <TouchableOpacity
@@ -1651,27 +1729,22 @@ export default function FormScreen() {
     );
   };
 
-  const renderInspectionStep = () => (
+  const renderInspectionStep = () => {
+    const purposeLabel = PURPOSE_LABELS[formData.report_purpose] || 'Inspection';
+    const purposeKey = formData.report_purpose || 'structural';
+    
+    return (
     <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
-      {/* Main tick box */}
-      <TouchableOpacity
-        style={styles.inspectionToggle}
-        onPress={() => updateField('building_consent_inspection', !formData.building_consent_inspection)}
-      >
-        <View style={[
-          styles.purposeCheckbox,
-          { width: 30, height: 30 },
-          formData.building_consent_inspection && styles.purposeCheckboxActive,
-        ]}>
-          {formData.building_consent_inspection && (
-            <Ionicons name="checkmark" size={20} color="#fff" />
-          )}
-        </View>
-        <Text style={styles.inspectionToggleText}>Building Consent Requirement Inspection</Text>
-      </TouchableOpacity>
+      <View style={[styles.inputGroup, { backgroundColor: '#E8F5E9', borderRadius: 12, padding: 14, marginBottom: 12 }]}>
+        <Text style={[styles.label, { fontSize: 16, fontWeight: '700', color: '#2E7D32', marginBottom: 2 }]}>
+          {purposeKey === 'structural' ? 'Building Consent Inspection (Structural)' : purposeLabel}
+        </Text>
+        <Text style={{ fontSize: 12, color: '#689F38' }}>
+          {REPORT_PURPOSES_INFO[purposeKey] || 'Complete the inspection items below'}
+        </Text>
+      </View>
 
-      {formData.building_consent_inspection && (
-        <View style={styles.inspectionContent}>
+      <View style={styles.inspectionContent}>
           {/* Dynamic Inspection Type Selector */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Inspection Type</Text>
@@ -1855,20 +1928,11 @@ export default function FormScreen() {
               )}
             </TouchableOpacity>
           </View>
-        </View>
-      )}
-
-      {!formData.building_consent_inspection && (
-        <View style={styles.inspectionDisabled}>
-          <Ionicons name="information-circle-outline" size={24} color="#999" />
-          <Text style={styles.inspectionDisabledText}>
-            Tick the box above if this visit includes a building consent inspection
-          </Text>
-        </View>
-      )}
+      </View>
       <View style={{ height: 100 }} />
     </ScrollView>
-  );
+    );
+  };
 
   const renderPhotosStep = () => (
     <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
@@ -2088,15 +2152,17 @@ export default function FormScreen() {
   };
 
   const renderCurrentStep = () => {
-    switch (currentStep) {
-      case 0: return renderSiteInfoStep();
-      case 1: return renderHazardsStep();
-      case 2: return renderSafetyStep();
-      case 3: return renderInspectionStep();
-      case 4: return renderPhotosStep();
-      case 5: return renderDeclarationStep();
-      default: return null;
+    const stepName = steps[currentStep];
+    if (stepName === 'Site Info') return renderSiteInfoStep();
+    if (stepName === 'Hazards') return renderHazardsStep();
+    if (stepName === 'Safety') return renderSafetyStep();
+    if (stepName === 'Photos') return renderPhotosStep();
+    if (stepName === 'Declare') return renderDeclarationStep();
+    // Purpose-specific steps
+    if (['Civil Inspection', 'Survey', 'Structural', 'Meeting'].includes(stepName)) {
+      return renderInspectionStep();
     }
+    return renderSiteInfoStep();
   };
 
   return (
