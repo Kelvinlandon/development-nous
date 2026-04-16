@@ -109,7 +109,7 @@ export default function HomeScreen() {
         {/* Tagline */}
         <View style={styles.taglineContainer}>
           <Text style={styles.taglineMain}>Take ya time and Paws for safety!</Text>
-          <Text style={styles.taglineSub}>NOTE: A report must be completed for all site visits.{'\n'}Harry must be given a pat prior to all site visits and if showing signs of hunger, sadness, stress or happiness he is to be given a treat.{'\n'}- Harry the Hound CCWO (Chief Comfort & Wellness Officer), SafetyPaws Publisher.</Text>
+          <Text style={styles.taglineSub}>NOTE: A report must be completed for all site visits.{'\n'}Harry must be given a pat prior to all site visits and if showing signing of hunger, sadness, stress or happiness he is to be given a treat.{'\n'}- Harry the Hound CCWO (Chief Comfort & Wellness Officer), SafetyPaws Publisher.</Text>
         </View>
       </View>
 
