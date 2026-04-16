@@ -109,7 +109,7 @@ export default function HomeScreen() {
         {/* Tagline */}
         <View style={styles.taglineContainer}>
           <Text style={styles.taglineMain}>Take ya time and Paws for safety!</Text>
-          <Text style={styles.taglineSub}>Don't leave the office without the treats!</Text>
+          <Text style={styles.taglineSub}>NOTE: A report must be completed for all site visits. Harry must be given a treat and a pat prior to all site visits</Text>
         </View>
       </View>
 
