@@ -414,7 +414,7 @@ export default function FormScreen() {
     job_address: '',
     job_address_lat: null,
     job_address_lng: null,
-    departure_office: '',
+    departure_office: 'hastings',
     estimated_km: null,
     estimated_travel_minutes: null,
     time_on_site_minutes: 30,
@@ -2339,6 +2339,10 @@ export default function FormScreen() {
                       }));
                       // Auto-validate the address
                       validateAddress(job.job_address);
+                      // Auto-calculate distance if office is selected
+                      if (formData.departure_office) {
+                        estimateDistance(formData.departure_office, job.job_address);
+                      }
                     }
                     setShowJobPicker(false);
                   }}
