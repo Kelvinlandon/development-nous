@@ -1486,7 +1486,22 @@ async def get_settings():
         default_settings = AppSettings()
         await db.settings.insert_one(default_settings.model_dump())
         return default_settings
-    return AppSettings(**settings)
+    
+    # Merge with defaults: fill in any empty/missing fields from AppSettings defaults
+    defaults = AppSettings().model_dump()
+    stored = {k: v for k, v in settings.items() if k != '_id'}
+    for key, default_val in defaults.items():
+        if key not in stored or stored[key] is None or stored[key] == '':
+            stored[key] = default_val
+    
+    # Update the DB with merged values so future fetches are consistent
+    await db.settings.update_one(
+        {"id": "app_settings"},
+        {"$set": stored},
+        upsert=True
+    )
+    
+    return AppSettings(**stored)
 
 @api_router.put("/settings", response_model=AppSettings)
 async def update_settings(update: AppSettingsUpdate):
