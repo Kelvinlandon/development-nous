@@ -298,7 +298,7 @@ class AppSettings(BaseModel):
     smtp_host: str = "smtp.gmail.com"
     smtp_port: int = 587
     smtp_username: str = "safetypawsdnl@gmail.com"
-    smtp_password: str = "P@ssw0rd0502"
+    smtp_password: str = "jijf wjeg hvwm zdwq"
     smtp_use_tls: bool = True
     smtp_enabled: bool = True
     company_name: str = "Development Nous Limited"
