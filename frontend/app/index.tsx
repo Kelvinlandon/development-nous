@@ -17,7 +17,7 @@ import Constants from 'expo-constants';
 
 const API_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || 
   process.env.EXPO_PUBLIC_BACKEND_URL || 
-  'https://site-report-app-4.preview.emergentagent.com';
+  'https://resplendent-passion-production-d644.up.railway.app';
 
 interface Report {
   id: string;
