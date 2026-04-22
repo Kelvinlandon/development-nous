@@ -294,13 +294,13 @@ class SiteVisitReportCreate(BaseModel):
 
 class AppSettings(BaseModel):
     id: str = "app_settings"
-    default_recipient_email: str = "kelvin.landon@developmentnous.nz"
+    default_recipient_email: str = "safetypawsdnl@gmail.com"
     smtp_host: str = "smtp.gmail.com"
     smtp_port: int = 587
-    smtp_username: str = ""
-    smtp_password: str = ""
+    smtp_username: str = "safetypawsdnl@gmail.com"
+    smtp_password: str = "P@ssw0rd0502"
     smtp_use_tls: bool = True
-    smtp_enabled: bool = False  # False = mocked email
+    smtp_enabled: bool = True
     company_name: str = "Development Nous Limited"
     # External data sync URLs
     staff_csv_url: str = "https://docs.google.com/spreadsheets/d/1IXIYNCBUyP1OHn5sjci-sn2DWq_x1XJiMvgq1YfKz9Y/edit?gid=0#gid=0"
