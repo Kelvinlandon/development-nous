@@ -52,7 +52,7 @@ export default function SettingsScreen() {
     company_name: 'Development Nous Limited',
     staff_csv_url: 'https://docs.google.com/spreadsheets/d/1IXIYNCBUyP1OHn5sjci-sn2DWq_x1XJiMvgq1YfKz9Y/edit?gid=0#gid=0',
     jobs_csv_url: 'https://docs.google.com/spreadsheets/d/1xIpraMOCkGG4MUC3CnQ6o7BhyDbHZ0JzKobt7YlPQgw/edit?gid=0#gid=0',
-    inspection_items_csv_url: '',
+    inspection_items_csv_url: 'https://docs.google.com/spreadsheets/d/1vUMzitaho6YfckdP2jaj5Dl6x2QcimQ61Fscq0M-wbY/edit?gid=0#gid=0',
     hastings_office_address: '502 Karamu Road North, Hastings',
     palmerston_north_office_address: '168 Grey Street, Palmerston North Central, Palmerston North 4410',
     report_frequency: 'manual',
