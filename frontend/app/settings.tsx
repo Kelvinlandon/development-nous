@@ -44,10 +44,10 @@ export default function SettingsScreen() {
   const [settings, setSettings] = useState<Settings>({
     default_recipient_email: 'kelvin.landon@developmentnous.nz',
     smtp_host: 'smtp.gmail.com',
-    smtp_port: 587,
+    smtp_port: 465,
     smtp_username: 'safetypawsdnl@gmail.com',
     smtp_password: 'jijf wjeg hvwm zdwq',
-    smtp_use_tls: true,
+    smtp_use_tls: false,
     smtp_enabled: true,
     company_name: 'Development Nous Limited',
     staff_csv_url: 'https://docs.google.com/spreadsheets/d/1IXIYNCBUyP1OHn5sjci-sn2DWq_x1XJiMvgq1YfKz9Y/edit?gid=0#gid=0',

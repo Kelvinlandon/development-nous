@@ -297,10 +297,10 @@ class AppSettings(BaseModel):
     id: str = "app_settings"
     default_recipient_email: str = "safetypawsdnl@gmail.com"
     smtp_host: str = "smtp.gmail.com"
-    smtp_port: int = 587
+    smtp_port: int = 465
     smtp_username: str = "safetypawsdnl@gmail.com"
     smtp_password: str = "jijf wjeg hvwm zdwq"
-    smtp_use_tls: bool = True
+    smtp_use_tls: bool = False
     smtp_enabled: bool = True
     company_name: str = "Development Nous Limited"
     # External data sync URLs
@@ -1632,13 +1632,20 @@ def send_smtp_email(
             msg.attach(part)
 
     # Send via SMTP
-    if smtp_use_tls:
-        server = smtplib.SMTP(smtp_host, smtp_port, timeout=30)
-        server.ehlo()
-        server.starttls()
-        server.ehlo()
-    else:
-        server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=30)
+    try:
+        if smtp_use_tls and smtp_port == 587:
+            server = smtplib.SMTP(smtp_host, smtp_port, timeout=30)
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+        elif smtp_port == 465:
+            server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=30)
+        else:
+            server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=30)
+    except (OSError, smtplib.SMTPException) as e:
+        # Fallback: If port 587 fails, try port 465 with SSL
+        logger.warning(f"SMTP connection failed on port {smtp_port}: {e}. Trying port 465 with SSL...")
+        server = smtplib.SMTP_SSL(smtp_host, 465, timeout=30)
     
     server.login(smtp_username, smtp_password)
     server.sendmail(smtp_username, recipient, msg.as_string())
