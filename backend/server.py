@@ -297,10 +297,10 @@ class AppSettings(BaseModel):
     id: str = "app_settings"
     default_recipient_email: str = "safetypawsdnl@gmail.com"
     smtp_host: str = "smtp.gmail.com"
-    smtp_port: int = 465
+    smtp_port: int = 587
     smtp_username: str = "safetypawsdnl@gmail.com"
     smtp_password: str = "jijf wjeg hvwm zdwq"
-    smtp_use_tls: bool = False
+    smtp_use_tls: bool = True
     smtp_enabled: bool = True
     company_name: str = "Development Nous Limited"
     # External data sync URLs
@@ -1127,6 +1127,7 @@ async def sync_from_csv():
                 # Clear existing staff and add new ones
                 await db.staff.delete_many({})
                 
+                staff_batch = []
                 for row in reader:
                     # Support many column name variations
                     name = (row.get('name') or row.get('Name') or row.get('staff_name') or 
@@ -1141,8 +1142,11 @@ async def sync_from_csv():
                     
                     if name and name.strip():
                         staff_obj = StaffMember(name=name.strip())
-                        await db.staff.insert_one(staff_obj.model_dump())
+                        staff_batch.append(staff_obj.model_dump())
                         staff_count += 1
+                
+                if staff_batch:
+                    await db.staff.insert_many(staff_batch)
                         
                 logger.info(f"Synced {staff_count} staff members from CSV")
             except httpx.HTTPStatusError as e:
@@ -1170,6 +1174,7 @@ async def sync_from_csv():
                 # Clear existing jobs and add new ones
                 await db.jobs.delete_many({})
                 
+                jobs_batch = []
                 for row in reader:
                     # Support many column name variations
                     job_number = (row.get('job_number') or row.get('Job Number') or row.get('number') or 
@@ -1204,8 +1209,11 @@ async def sync_from_csv():
                             job_name=(job_name or '').strip(),
                             job_address=(job_address or '').strip()
                         )
-                        await db.jobs.insert_one(job_obj.model_dump())
+                        jobs_batch.append(job_obj.model_dump())
                         jobs_count += 1
+                
+                if jobs_batch:
+                    await db.jobs.insert_many(jobs_batch)
                         
                 logger.info(f"Synced {jobs_count} jobs from CSV")
             except httpx.HTTPStatusError as e:
@@ -1305,6 +1313,7 @@ async def sync_inspection_items():
             
             await db.inspection_items.delete_many({})
             count = 0
+            items_batch = []
             
             for row in reader:
                 inspection_type = (row.get('Inspection Type') or row.get('inspection_type') or
@@ -1341,7 +1350,7 @@ async def sync_inspection_items():
                     if cat not in ('structural', 'civil', 'surveying', 'meeting'):
                         cat = 'structural'
                     
-                    await db.inspection_items.insert_one({
+                    items_batch.append({
                         "category": cat,
                         "inspection_type": inspection_type.strip(),
                         "question": question.strip(),
@@ -1349,6 +1358,9 @@ async def sync_inspection_items():
                         "options": options.strip(),
                     })
                     count += 1
+            
+            if items_batch:
+                await db.inspection_items.insert_many(items_batch)
             
             logger.info(f"Synced {count} inspection items from CSV")
             return {"success": True, "message": f"Synced {count} inspection items", "count": count}
