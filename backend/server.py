@@ -14,6 +14,7 @@ from io import BytesIO
 import csv
 import httpx
 import smtplib
+import resend
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
@@ -302,6 +303,7 @@ class AppSettings(BaseModel):
     smtp_password: str = "jijf wjeg hvwm zdwq"
     smtp_use_tls: bool = True
     smtp_enabled: bool = True
+    resend_api_key: str = "re_5AbxN7Wa_5t54vGjP77DhLeKyjhM1Tx9Z"
     company_name: str = "Development Nous Limited"
     # External data sync URLs
     staff_csv_url: str = "https://docs.google.com/spreadsheets/d/1IXIYNCBUyP1OHn5sjci-sn2DWq_x1XJiMvgq1YfKz9Y/edit?gid=0#gid=0"
@@ -324,6 +326,7 @@ class AppSettingsUpdate(BaseModel):
     smtp_password: Optional[str] = None
     smtp_use_tls: Optional[bool] = None
     smtp_enabled: Optional[bool] = None
+    resend_api_key: Optional[str] = None
     company_name: Optional[str] = None
     staff_csv_url: Optional[str] = None
     jobs_csv_url: Optional[str] = None
@@ -1599,6 +1602,105 @@ async def get_report_pdf(report_id: str):
 
 # ================== Email Sending ==================
 
+def send_resend_email(
+    resend_api_key: str,
+    from_email: str,
+    recipient: str,
+    subject: str,
+    html_body: str,
+    pdf_bytes: bytes = None,
+    pdf_filename: str = None,
+    attachments: list = None,
+    additional_attachments: list = None,
+) -> None:
+    """Send an email via Resend API (works on Railway without SMTP)"""
+    resend.api_key = resend_api_key
+    
+    email_attachments = []
+    
+    # Attach main PDF
+    if pdf_bytes and pdf_filename:
+        email_attachments.append({
+            "filename": pdf_filename,
+            "content": list(pdf_bytes),
+        })
+    
+    # Attach additional PDFs
+    if additional_attachments:
+        for extra_bytes, extra_filename in additional_attachments:
+            email_attachments.append({
+                "filename": extra_filename,
+                "content": list(extra_bytes),
+            })
+    
+    # Attach other files (photos etc.)
+    if attachments:
+        for file_bytes, filename, subtype in attachments:
+            email_attachments.append({
+                "filename": filename,
+                "content": list(file_bytes),
+            })
+    
+    params = {
+        "from": from_email,
+        "to": [recipient],
+        "subject": subject,
+        "html": html_body,
+    }
+    
+    if email_attachments:
+        params["attachments"] = email_attachments
+    
+    resend.Emails.send(params)
+
+
+def send_email(
+    settings_obj,
+    recipient: str,
+    subject: str,
+    html_body: str,
+    pdf_bytes: bytes = None,
+    pdf_filename: str = None,
+    attachments: list = None,
+    additional_attachments: list = None,
+) -> None:
+    """Unified email sender: tries Resend first, falls back to SMTP"""
+    # Try Resend first (works on Railway)
+    if settings_obj.resend_api_key:
+        try:
+            from_email = "SafetyPaws Reports <onboarding@resend.dev>"
+            send_resend_email(
+                resend_api_key=settings_obj.resend_api_key,
+                from_email=from_email,
+                recipient=recipient,
+                subject=subject,
+                html_body=html_body,
+                pdf_bytes=pdf_bytes,
+                pdf_filename=pdf_filename,
+                attachments=attachments,
+                additional_attachments=additional_attachments,
+            )
+            logger.info(f"Email sent via Resend to {recipient}")
+            return
+        except Exception as e:
+            logger.warning(f"Resend failed: {e}, falling back to SMTP...")
+    
+    # Fallback to SMTP
+    send_smtp_email(
+        smtp_host=settings_obj.smtp_host,
+        smtp_port=settings_obj.smtp_port,
+        smtp_username=settings_obj.smtp_username,
+        smtp_password=settings_obj.smtp_password,
+        smtp_use_tls=settings_obj.smtp_use_tls,
+        recipient=recipient,
+        subject=subject,
+        html_body=html_body,
+        pdf_bytes=pdf_bytes,
+        pdf_filename=pdf_filename,
+        attachments=attachments,
+        additional_attachments=additional_attachments,
+    )
+
 def send_smtp_email(
     smtp_host: str,
     smtp_port: int,
@@ -1799,12 +1901,8 @@ async def send_report_email(report_id: str, email_req: EmailRequest):
             html_body = build_email_html(report_obj, settings_obj)
             
             # Send email with all PDFs
-            send_smtp_email(
-                smtp_host=settings_obj.smtp_host,
-                smtp_port=settings_obj.smtp_port,
-                smtp_username=settings_obj.smtp_username,
-                smtp_password=settings_obj.smtp_password,
-                smtp_use_tls=settings_obj.smtp_use_tls,
+            send_email(
+                settings_obj=settings_obj,
                 recipient=recipient,
                 subject=subject,
                 html_body=html_body,
@@ -1928,12 +2026,8 @@ async def email_report_photos(report_id: str, email_req: EmailRequest):
             </div>
             """
             
-            send_smtp_email(
-                smtp_host=settings_obj.smtp_host,
-                smtp_port=settings_obj.smtp_port,
-                smtp_username=settings_obj.smtp_username,
-                smtp_password=settings_obj.smtp_password,
-                smtp_use_tls=settings_obj.smtp_use_tls,
+            send_email(
+                settings_obj=settings_obj,
                 recipient=recipient,
                 subject=f"{job_number} — Site Visit Photos — {report_obj.date}",
                 html_body=html_body,
@@ -2067,12 +2161,8 @@ async def email_spreadsheet_report(recipient_email: Optional[str] = None):
             </div>
             """
             
-            send_smtp_email(
-                smtp_host=settings_obj.smtp_host,
-                smtp_port=settings_obj.smtp_port,
-                smtp_username=settings_obj.smtp_username,
-                smtp_password=settings_obj.smtp_password,
-                smtp_use_tls=settings_obj.smtp_use_tls,
+            send_email(
+                settings_obj=settings_obj,
                 recipient=recipient,
                 subject=f"Site Visit Reports — {settings_obj.company_name} — {today}",
                 html_body=html_body,
@@ -2146,12 +2236,8 @@ async def check_scheduled_reports():
                     </div>
                     """
                     
-                    send_smtp_email(
-                        smtp_host=settings_obj.smtp_host,
-                        smtp_port=settings_obj.smtp_port,
-                        smtp_username=settings_obj.smtp_username,
-                        smtp_password=settings_obj.smtp_password,
-                        smtp_use_tls=settings_obj.smtp_use_tls,
+                    send_email(
+                        settings_obj=settings_obj,
                         recipient=recipient,
                         subject=f"Scheduled Report — {settings_obj.company_name} — {today}",
                         html_body=html_body,
