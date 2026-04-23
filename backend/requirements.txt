@@ -11,3 +11,4 @@ reportlab==4.4.10
 pillow==12.1.1
 geopy==2.4.1
 starlette==0.37.2
+resend==2.29.0
