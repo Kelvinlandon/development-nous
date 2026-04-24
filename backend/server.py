@@ -2294,6 +2294,18 @@ if WEB_DIST.exists():
     async def serve_favicon():
         return FileResponse(str(WEB_DIST / "favicon.ico"))
     
+    @app.get("/apple-touch-icon.png")
+    async def serve_apple_icon():
+        return FileResponse(str(WEB_DIST / "apple-touch-icon.png"))
+    
+    @app.get("/apple-touch-icon-180.png")
+    async def serve_apple_icon_180():
+        return FileResponse(str(WEB_DIST / "apple-touch-icon-180.png"))
+    
+    @app.get("/manifest.json")
+    async def serve_manifest():
+        return FileResponse(str(WEB_DIST / "manifest.json"))
+    
     @app.get("/")
     async def serve_home():
         return FileResponse(str(WEB_DIST / "index.html"))
