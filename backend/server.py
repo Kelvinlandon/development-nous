@@ -1,4 +1,6 @@
 from fastapi import FastAPI, APIRouter, HTTPException
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -2259,6 +2261,41 @@ async def start_scheduler():
 
 # Re-include router after new endpoints
 app.include_router(api_router)
+
+# ================== Serve Web App ==================
+WEB_DIST = ROOT_DIR / "web_dist"
+
+if WEB_DIST.exists():
+    # Serve static assets (_expo, assets, etc.)
+    app.mount("/_expo", StaticFiles(directory=str(WEB_DIST / "_expo")), name="expo_static")
+    if (WEB_DIST / "assets").exists():
+        app.mount("/assets", StaticFiles(directory=str(WEB_DIST / "assets")), name="web_assets")
+    
+    @app.get("/settings")
+    async def serve_settings_page():
+        return FileResponse(str(WEB_DIST / "settings.html"))
+    
+    @app.get("/form")
+    async def serve_form_page():
+        form_index = WEB_DIST / "form" / "index.html"
+        if form_index.exists():
+            return FileResponse(str(form_index))
+        return FileResponse(str(WEB_DIST / "index.html"))
+    
+    @app.get("/reports/{report_id}")
+    async def serve_report_page(report_id: str):
+        report_index = WEB_DIST / "reports" / "[id].html"
+        if report_index.exists():
+            return FileResponse(str(report_index))
+        return FileResponse(str(WEB_DIST / "index.html"))
+    
+    @app.get("/favicon.ico")
+    async def serve_favicon():
+        return FileResponse(str(WEB_DIST / "favicon.ico"))
+    
+    @app.get("/")
+    async def serve_home():
+        return FileResponse(str(WEB_DIST / "index.html"))
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
