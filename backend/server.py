@@ -2306,6 +2306,10 @@ if WEB_DIST.exists():
     async def serve_manifest():
         return FileResponse(str(WEB_DIST / "manifest.json"))
     
+    @app.get("/splash_main.png")
+    async def serve_splash_main():
+        return FileResponse(str(WEB_DIST / "splash_main.png"))
+    
     # Serve splash screen images
     @app.get("/splash_{size}.png")
     async def serve_splash(size: str):
