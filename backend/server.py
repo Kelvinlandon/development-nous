@@ -1685,9 +1685,10 @@ def send_email(
             logger.info(f"Email sent via Resend to {recipient}")
             return
         except Exception as e:
-            logger.warning(f"Resend failed: {e}, falling back to SMTP...")
+            logger.error(f"Resend failed with error: {type(e).__name__}: {e}")
+            raise Exception(f"Resend email failed: {str(e)}")
     
-    # Fallback to SMTP
+    # Fallback to SMTP only if no Resend key
     send_smtp_email(
         smtp_host=settings_obj.smtp_host,
         smtp_port=settings_obj.smtp_port,
