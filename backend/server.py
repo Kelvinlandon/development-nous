@@ -2306,6 +2306,14 @@ if WEB_DIST.exists():
     async def serve_manifest():
         return FileResponse(str(WEB_DIST / "manifest.json"))
     
+    # Serve splash screen images
+    @app.get("/splash_{size}.png")
+    async def serve_splash(size: str):
+        splash_file = WEB_DIST / f"splash_{size}.png"
+        if splash_file.exists():
+            return FileResponse(str(splash_file))
+        return FileResponse(str(WEB_DIST / "apple-touch-icon.png"))
+    
     @app.get("/")
     async def serve_home():
         return FileResponse(str(WEB_DIST / "index.html"))
