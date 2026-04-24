@@ -1670,7 +1670,7 @@ def send_email(
     # Try Resend first (works on Railway)
     if settings_obj.resend_api_key:
         try:
-            from_email = "SafetyPaws Reports <safetypaws@developmentnous.nz>"
+            from_email = "SafetyPaws Reports <onboarding@resend.dev>"
             send_resend_email(
                 resend_api_key=settings_obj.resend_api_key,
                 from_email=from_email,
