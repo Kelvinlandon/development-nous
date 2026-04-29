@@ -41,7 +41,7 @@ const showAlert = (title: string, message: string, buttons?: any[]) => {
       }
     }
   } else {
-    showAlert(title, message, buttons);
+    Alert.alert(title, message, buttons);
   }
 };
 
