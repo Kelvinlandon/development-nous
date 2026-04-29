@@ -905,6 +905,11 @@ export default function FormScreen() {
     setCurrentStep(prev => Math.max(prev - 1, 0));
   };
 
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailSelections, setEmailSelections] = useState<Record<string, boolean>>({});
+  const [submittedReportId, setSubmittedReportId] = useState<string | null>(null);
+  const [sendingEmail, setSendingEmail] = useState(false);
+
   const submitForm = async () => {
     if (!validateStep()) return;
     
@@ -935,48 +940,59 @@ export default function FormScreen() {
       };
       
       const response = await axios.post(`${API_URL}/api/reports`, submitData);
-      showAlert(
-        'Success',
-        'Report created successfully. What would you like to email?',
-        [
-          { text: 'Later', onPress: () => router.replace('/') },
-          {
-            text: 'Send Report',
-            onPress: async () => {
-              try {
-                await axios.post(`${API_URL}/api/reports/${response.data.id}/email`, {
-                  report_id: response.data.id
-                });
-                showAlert('Email Sent', 'Report PDF has been emailed successfully');
-                router.replace('/');
-              } catch (error) {
-                showAlert('Email Failed', 'Report saved but email failed to send');
-                router.replace('/');
-              }
-            },
-          },
-          {
-            text: 'Send Photos',
-            onPress: async () => {
-              try {
-                await axios.post(`${API_URL}/api/reports/${response.data.id}/email-photos`, {
-                  report_id: response.data.id
-                });
-                showAlert('Photos Sent', 'Site photos have been emailed successfully');
-                router.replace('/');
-              } catch (error) {
-                showAlert('Email Failed', 'Report saved but photos email failed to send');
-                router.replace('/');
-              }
-            },
-          },
-        ]
-      );
+      setSubmittedReportId(response.data.id);
+      
+      // Build email selections based on report types
+      const selections: Record<string, boolean> = { hs: true };
+      if (formData.report_types.includes('structural')) selections.structural = true;
+      if (formData.report_types.includes('civil')) selections.civil = true;
+      if (formData.report_types.includes('surveying')) selections.surveying = true;
+      if (formData.report_types.includes('meeting')) selections.meeting = true;
+      if (formData.general_observations.length > 0) selections.observations = true;
+      if (formData.site_photos.length > 0) selections.photos = true;
+      setEmailSelections(selections);
+      setShowEmailModal(true);
     } catch (error) {
       console.error('Error submitting form:', error);
       showAlert('Error', 'Failed to submit report');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const sendSelectedEmails = async () => {
+    if (!submittedReportId) return;
+    setSendingEmail(true);
+    try {
+      // Send report PDFs (H&S + selected inspection types)
+      const reportTypes = Object.keys(emailSelections).filter(
+        k => emailSelections[k] && k !== 'photos'
+      );
+      
+      if (reportTypes.length > 0) {
+        await axios.post(`${API_URL}/api/reports/${submittedReportId}/email`, {
+          report_id: submittedReportId,
+          report_types: reportTypes,
+        });
+      }
+      
+      // Send photos separately if selected
+      if (emailSelections.photos) {
+        await axios.post(`${API_URL}/api/reports/${submittedReportId}/email-photos`, {
+          report_id: submittedReportId,
+        });
+      }
+      
+      setShowEmailModal(false);
+      showAlert('Email Sent', 'Selected items have been emailed successfully');
+      router.replace('/');
+    } catch (error) {
+      console.error('Email error:', error);
+      showAlert('Email Failed', 'Report saved but email failed to send');
+      setShowEmailModal(false);
+      router.replace('/');
+    } finally {
+      setSendingEmail(false);
     }
   };
 
@@ -2370,6 +2386,142 @@ export default function FormScreen() {
             </TouchableOpacity>
           </View>
         </SafeAreaView>
+      </Modal>
+
+      {/* Email Selection Modal */}
+      <Modal
+        visible={showEmailModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => {
+          setShowEmailModal(false);
+          router.replace('/');
+        }}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 20, maxHeight: '80%' }}>
+            <Text style={{ fontSize: 20, fontWeight: '700', color: '#2E7D32', marginBottom: 4, textAlign: 'center' }}>
+              ✅ Report Saved!
+            </Text>
+            <Text style={{ fontSize: 14, color: '#666', marginBottom: 16, textAlign: 'center' }}>
+              Select what to include in the email:
+            </Text>
+            
+            <ScrollView style={{ maxHeight: 300 }}>
+              {/* H&S Report */}
+              <TouchableOpacity
+                style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}
+                onPress={() => setEmailSelections(prev => ({ ...prev, hs: !prev.hs }))}
+              >
+                <View style={{ width: 24, height: 24, borderRadius: 4, borderWidth: 2, borderColor: emailSelections.hs ? '#4CAF50' : '#999', backgroundColor: emailSelections.hs ? '#4CAF50' : '#fff', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                  {emailSelections.hs && <Ionicons name="checkmark" size={16} color="#fff" />}
+                </View>
+                <Text style={{ fontSize: 15, fontWeight: '600' }}>🛡️ Health & Safety Report (PDF)</Text>
+              </TouchableOpacity>
+
+              {/* Structural */}
+              {formData.report_types.includes('structural') && (
+                <TouchableOpacity
+                  style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}
+                  onPress={() => setEmailSelections(prev => ({ ...prev, structural: !prev.structural }))}
+                >
+                  <View style={{ width: 24, height: 24, borderRadius: 4, borderWidth: 2, borderColor: emailSelections.structural ? '#4CAF50' : '#999', backgroundColor: emailSelections.structural ? '#4CAF50' : '#fff', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                    {emailSelections.structural && <Ionicons name="checkmark" size={16} color="#fff" />}
+                  </View>
+                  <Text style={{ fontSize: 15, fontWeight: '600' }}>🏛️ Structural Inspection (PDF)</Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Civil */}
+              {formData.report_types.includes('civil') && (
+                <TouchableOpacity
+                  style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}
+                  onPress={() => setEmailSelections(prev => ({ ...prev, civil: !prev.civil }))}
+                >
+                  <View style={{ width: 24, height: 24, borderRadius: 4, borderWidth: 2, borderColor: emailSelections.civil ? '#4CAF50' : '#999', backgroundColor: emailSelections.civil ? '#4CAF50' : '#fff', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                    {emailSelections.civil && <Ionicons name="checkmark" size={16} color="#fff" />}
+                  </View>
+                  <Text style={{ fontSize: 15, fontWeight: '600' }}>🔧 Civil Inspection (PDF)</Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Surveying */}
+              {formData.report_types.includes('surveying') && (
+                <TouchableOpacity
+                  style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}
+                  onPress={() => setEmailSelections(prev => ({ ...prev, surveying: !prev.surveying }))}
+                >
+                  <View style={{ width: 24, height: 24, borderRadius: 4, borderWidth: 2, borderColor: emailSelections.surveying ? '#4CAF50' : '#999', backgroundColor: emailSelections.surveying ? '#4CAF50' : '#fff', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                    {emailSelections.surveying && <Ionicons name="checkmark" size={16} color="#fff" />}
+                  </View>
+                  <Text style={{ fontSize: 15, fontWeight: '600' }}>📐 Surveying Report (PDF)</Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Meeting */}
+              {formData.report_types.includes('meeting') && (
+                <TouchableOpacity
+                  style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}
+                  onPress={() => setEmailSelections(prev => ({ ...prev, meeting: !prev.meeting }))}
+                >
+                  <View style={{ width: 24, height: 24, borderRadius: 4, borderWidth: 2, borderColor: emailSelections.meeting ? '#4CAF50' : '#999', backgroundColor: emailSelections.meeting ? '#4CAF50' : '#fff', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                    {emailSelections.meeting && <Ionicons name="checkmark" size={16} color="#fff" />}
+                  </View>
+                  <Text style={{ fontSize: 15, fontWeight: '600' }}>🤝 Site Meeting Report (PDF)</Text>
+                </TouchableOpacity>
+              )}
+
+              {/* General Observations */}
+              {formData.general_observations.length > 0 && (
+                <TouchableOpacity
+                  style={{ flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}
+                  onPress={() => setEmailSelections(prev => ({ ...prev, observations: !prev.observations }))}
+                >
+                  <View style={{ width: 24, height: 24, borderRadius: 4, borderWidth: 2, borderColor: emailSelections.observations ? '#4CAF50' : '#999', backgroundColor: emailSelections.observations ? '#4CAF50' : '#fff', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                    {emailSelections.observations && <Ionicons name="checkmark" size={16} color="#fff" />}
+                  </View>
+                  <Text style={{ fontSize: 15, fontWeight: '600' }}>📋 General Observations (PDF)</Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Site Photos */}
+              {formData.site_photos.length > 0 && (
+                <TouchableOpacity
+                  style={{ flexDirection: 'row', alignItems: 'center', padding: 12 }}
+                  onPress={() => setEmailSelections(prev => ({ ...prev, photos: !prev.photos }))}
+                >
+                  <View style={{ width: 24, height: 24, borderRadius: 4, borderWidth: 2, borderColor: emailSelections.photos ? '#4CAF50' : '#999', backgroundColor: emailSelections.photos ? '#4CAF50' : '#fff', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                    {emailSelections.photos && <Ionicons name="checkmark" size={16} color="#fff" />}
+                  </View>
+                  <Text style={{ fontSize: 15, fontWeight: '600' }}>📷 Site Photos (attachments)</Text>
+                </TouchableOpacity>
+              )}
+            </ScrollView>
+
+            <View style={{ flexDirection: 'row', marginTop: 20, gap: 10 }}>
+              <TouchableOpacity
+                style={{ flex: 1, padding: 14, borderRadius: 10, backgroundColor: '#f0f0f0', alignItems: 'center' }}
+                onPress={() => {
+                  setShowEmailModal(false);
+                  router.replace('/');
+                }}
+              >
+                <Text style={{ fontSize: 15, fontWeight: '600', color: '#666' }}>Skip</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 2, padding: 14, borderRadius: 10, backgroundColor: '#4CAF50', alignItems: 'center', opacity: sendingEmail ? 0.6 : 1 }}
+                onPress={sendSelectedEmails}
+                disabled={sendingEmail}
+              >
+                {sendingEmail ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>📧 Send Email</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
 
       {/* Staff Picker Modal */}
