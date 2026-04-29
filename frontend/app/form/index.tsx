@@ -24,6 +24,27 @@ import * as Location from 'expo-location';
 import * as Linking from 'expo-linking';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 
+// Cross-platform alert that works on web and native
+const showAlert = (title: string, message: string, buttons?: any[]) => {
+  if (Platform.OS === 'web') {
+    if (buttons && buttons.length > 1) {
+      const result = window.confirm(`${title}\n\n${message}`);
+      if (result && buttons[1]?.onPress) {
+        buttons[1].onPress();
+      } else if (!result && buttons[0]?.onPress) {
+        buttons[0].onPress();
+      }
+    } else {
+      window.alert(`${title}\n\n${message}`);
+      if (buttons && buttons[0]?.onPress) {
+        buttons[0].onPress();
+      }
+    }
+  } else {
+    showAlert(title, message, buttons);
+  }
+};
+
 const API_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || 
   process.env.EXPO_PUBLIC_BACKEND_URL || 
   'https://resplendent-passion-production-d644.up.railway.app';
@@ -328,7 +349,7 @@ export default function FormScreen() {
       // Auto-select the new staff
       toggleStaffSelection(response.data.name);
     } catch (error) {
-      Alert.alert('Error', 'Failed to add staff member');
+      showAlert('Error', 'Failed to add staff member');
     }
   };
 
@@ -347,7 +368,7 @@ export default function FormScreen() {
       setNewJobName('');
       setShowJobPicker(false);
     } catch (error) {
-      Alert.alert('Error', 'Failed to add job');
+      showAlert('Error', 'Failed to add job');
     }
   };
 
@@ -370,7 +391,7 @@ export default function FormScreen() {
         setAddressSuggestions(response.data.results);
         setShowAddressSuggestions(true);
       } else {
-        Alert.alert('Address Not Found', 'Could not find a matching address. You can still use a custom address.');
+        showAlert('Address Not Found', 'Could not find a matching address. You can still use a custom address.');
         setAddressSuggestions([]);
       }
     } catch (error) {
@@ -591,7 +612,7 @@ export default function FormScreen() {
     const { status: libraryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     
     if (cameraStatus !== 'granted' || libraryStatus !== 'granted') {
-      Alert.alert('Permission Required', 'Please grant camera and photo library permissions to add photos.');
+      showAlert('Permission Required', 'Please grant camera and photo library permissions to add photos.');
       return false;
     }
     return true;
@@ -642,7 +663,7 @@ export default function FormScreen() {
     try {
       const hasPermission = await requestLocationPermission();
       if (!hasPermission) {
-        Alert.alert('Permission Required', 'Please grant location permission to fetch weather conditions.');
+        showAlert('Permission Required', 'Please grant location permission to fetch weather conditions.');
         setFetchingWeather(false);
         return;
       }
@@ -671,7 +692,7 @@ export default function FormScreen() {
       
     } catch (error) {
       console.error('Error fetching weather:', error);
-      Alert.alert('Weather Error', 'Could not fetch weather conditions. Please enter manually.');
+      showAlert('Weather Error', 'Could not fetch weather conditions. Please enter manually.');
     } finally {
       setFetchingWeather(false);
     }
@@ -826,7 +847,7 @@ export default function FormScreen() {
   };
 
   const removePhoto = (index: number) => {
-    Alert.alert('Remove Photo', 'Are you sure you want to remove this photo?', [
+    showAlert('Remove Photo', 'Are you sure you want to remove this photo?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Remove',
@@ -853,17 +874,17 @@ export default function FormScreen() {
     const stepName = steps[currentStep];
     if (stepName === 'Site Info') {
       if (!formData.staff_members || !formData.date || !formData.job_no_name) {
-        Alert.alert('Required Fields', 'Please fill in Staff Member(s), Date, and Job No./Name');
+        showAlert('Required Fields', 'Please fill in Staff Member(s), Date, and Job No./Name');
         return false;
       }
     }
     if (stepName === 'Declare') {
       if (!formData.staff_print_name) {
-        Alert.alert('Required Fields', 'Please enter your printed name');
+        showAlert('Required Fields', 'Please enter your printed name');
         return false;
       }
       if (!formData.signature_data) {
-        Alert.alert('Required Fields', 'Please provide your signature');
+        showAlert('Required Fields', 'Please provide your signature');
         return false;
       }
     }
@@ -909,7 +930,7 @@ export default function FormScreen() {
       };
       
       const response = await axios.post(`${API_URL}/api/reports`, submitData);
-      Alert.alert(
+      showAlert(
         'Success',
         'Report created successfully. What would you like to email?',
         [
@@ -921,10 +942,10 @@ export default function FormScreen() {
                 await axios.post(`${API_URL}/api/reports/${response.data.id}/email`, {
                   report_id: response.data.id
                 });
-                Alert.alert('Email Sent', 'Report PDF has been emailed successfully');
+                showAlert('Email Sent', 'Report PDF has been emailed successfully');
                 router.replace('/');
               } catch (error) {
-                Alert.alert('Email Failed', 'Report saved but email failed to send');
+                showAlert('Email Failed', 'Report saved but email failed to send');
                 router.replace('/');
               }
             },
@@ -936,10 +957,10 @@ export default function FormScreen() {
                 await axios.post(`${API_URL}/api/reports/${response.data.id}/email-photos`, {
                   report_id: response.data.id
                 });
-                Alert.alert('Photos Sent', 'Site photos have been emailed successfully');
+                showAlert('Photos Sent', 'Site photos have been emailed successfully');
                 router.replace('/');
               } catch (error) {
-                Alert.alert('Email Failed', 'Report saved but photos email failed to send');
+                showAlert('Email Failed', 'Report saved but photos email failed to send');
                 router.replace('/');
               }
             },
@@ -948,7 +969,7 @@ export default function FormScreen() {
       );
     } catch (error) {
       console.error('Error submitting form:', error);
-      Alert.alert('Error', 'Failed to submit report');
+      showAlert('Error', 'Failed to submit report');
     } finally {
       setSubmitting(false);
     }
@@ -2196,7 +2217,7 @@ export default function FormScreen() {
             <SignatureCanvas
               ref={signatureRef}
               onOK={handleSignature}
-              onEmpty={() => Alert.alert('Error', 'Please provide your signature')}
+              onEmpty={() => showAlert('Error', 'Please provide your signature')}
               descriptionText=""
               clearText="Clear"
               confirmText="Save"
