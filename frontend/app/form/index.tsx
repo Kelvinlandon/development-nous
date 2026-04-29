@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -101,7 +101,7 @@ interface FormData {
   // Header
   staff_members: string;
   date: string;
-  report_purpose: string;
+  report_types: string[];
   job_no_name: string;
   job_address: string;
   job_address_lat: number | null;
@@ -154,6 +154,8 @@ interface FormData {
   cupolex_dramix_fibre_required: string;
   // Photos
   site_photos: SitePhoto[];
+  // General Observations
+  general_observations: Array<{photo: string; comment: string}>;
   // Declaration
   staff_print_name: string;
   signature_data: string;
@@ -214,17 +216,6 @@ export default function FormScreen() {
     fetchStaffAndJobs();
     fetchInspectionItems();
   }, []);
-
-  // Auto-fill declaration name when reaching Declaration step
-  useEffect(() => {
-    if (currentStep === 5 && formData.staff_members) {
-      setFormData(prev => ({
-        ...prev,
-        staff_print_name: prev.staff_members,
-        declaration_date: prev.declaration_date || new Date().toISOString().split('T')[0],
-      }));
-    }
-  }, [currentStep]);
 
 
   const fetchStaffAndJobs = async () => {
@@ -430,7 +421,7 @@ export default function FormScreen() {
   const [formData, setFormData] = useState<FormData>({
     staff_members: '',
     date: todayString,
-    report_purpose: '',
+    report_types: [],
     job_no_name: '',
     job_address: '',
     job_address_lat: null,
@@ -487,6 +478,7 @@ export default function FormScreen() {
     cupolex_concrete_strength: '',
     cupolex_dramix_fibre_required: '',
     site_photos: [],
+    general_observations: [],
     staff_print_name: '',
     signature_data: '',
     signature_type: 'typed',
@@ -500,15 +492,27 @@ export default function FormScreen() {
     meeting: 'Meeting',
   };
 
-  const getSteps = () => {
+  const steps = useMemo(() => {
     const base = ['Site Info', 'Hazards', 'Safety'];
-    if (formData.report_purpose) {
-      base.push(PURPOSE_LABELS[formData.report_purpose] || 'Inspection');
+    const inspTypes = formData.report_types.filter(t => t !== 'hs' && t !== 'observations');
+    if (inspTypes.length > 0) {
+      base.push('Inspection');
     }
-    base.push('Photos', 'Declare');
+    base.push('Observations', 'Photos', 'Declare');
     return base;
-  };
-  const steps = getSteps();
+  }, [formData.report_types]);
+
+  // Auto-fill declaration name when reaching Declaration step
+  useEffect(() => {
+    const stepName = steps[currentStep];
+    if (stepName === 'Declare' && formData.staff_members) {
+      setFormData(prev => ({
+        ...prev,
+        staff_print_name: prev.staff_members,
+        declaration_date: prev.declaration_date || new Date().toISOString().split('T')[0],
+      }));
+    }
+  }, [currentStep, formData.report_types]);
 
   const updateField = (field: keyof FormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -924,8 +928,9 @@ export default function FormScreen() {
       
       const submitData = {
         ...formData,
+        report_purpose: formData.report_types.filter(t => t !== 'hs' && t !== 'observations').join(','),
         inspection_type: inspectionTypes.join(', '),
-        building_consent_inspection: !!formData.report_purpose,
+        building_consent_inspection: formData.report_types.some(t => !['hs', 'observations'].includes(t)),
         inspection_responses: inspResponses,
       };
       
@@ -1020,60 +1025,80 @@ export default function FormScreen() {
   };
 
   const PURPOSE_OPTIONS = [
-    { key: 'civil', label: 'Civil Construction Inspection', icon: '🔧' },
-    { key: 'surveying', label: 'Surveying / Set-Out', icon: '📐' },
-    { key: 'structural', label: 'Structural Inspection', icon: '🏛️' },
-    { key: 'meeting', label: 'Site Meeting', icon: '🤝' },
+    { key: 'hs', label: 'Health & Safety', icon: '🛡️', locked: true },
+    { key: 'observations', label: 'General Observations', icon: '📋', locked: true },
+    { key: 'civil', label: 'Civil Construction Inspection', icon: '🔧', locked: false },
+    { key: 'surveying', label: 'Surveying / Set-Out', icon: '📐', locked: false },
+    { key: 'structural', label: 'Structural Inspection', icon: '🏛️', locked: false },
+    { key: 'meeting', label: 'Site Meeting', icon: '🤝', locked: false },
   ];
+
+  const toggleReportType = (key: string) => {
+    setFormData(prev => {
+      const current = prev.report_types;
+      let updated: string[];
+      if (current.includes(key)) {
+        updated = current.filter(k => k !== key);
+      } else {
+        updated = [...current, key];
+      }
+      return { ...prev, report_types: updated };
+    });
+    // Fetch inspection items for the selected category
+    if (!formData.report_types.includes(key)) {
+      axios.get(`${API_URL}/api/inspection-items?category=${key}`).then(res => {
+        setInspectionTypes(prev => [...new Set([...prev, ...(res.data.types || [])])]);
+        setInspectionItems(prev => ({ ...prev, ...(res.data.items || {}) }));
+      }).catch(() => {});
+    }
+  };
 
   const renderSiteInfoStep = () => (
     <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
-      {/* Report Purpose */}
+      {/* Report Type */}
       <View style={[styles.inputGroup, { backgroundColor: '#E8F5E9', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#C8E6C9' }]}>
-        <Text style={[styles.label, { fontSize: 15, fontWeight: '700', color: '#2E7D32', marginBottom: 4 }]}>Report Purpose</Text>
-        <Text style={{ fontSize: 12, color: '#689F38', marginBottom: 10 }}>H&S Report is always included. Select an additional report type:</Text>
-        {PURPOSE_OPTIONS.map((opt) => (
-          <TouchableOpacity
-            key={opt.key}
-            style={[
-              {
-                flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 10,
-                backgroundColor: formData.report_purpose === opt.key ? '#C8E6C9' : '#fff',
-                borderWidth: 1, borderColor: formData.report_purpose === opt.key ? '#4CAF50' : '#E0E0E0',
-                marginBottom: 8,
-              },
-            ]}
-            onPress={() => {
-              const newVal = formData.report_purpose === opt.key ? '' : opt.key;
-              updateField('report_purpose', newVal);
-              // Auto-set building_consent_inspection for structural
-              if (newVal === 'structural') {
-                updateField('building_consent_inspection', true);
-              } else if (newVal === '') {
-                updateField('building_consent_inspection', false);
-              }
-              // Fetch inspection items for the selected purpose category
-              if (newVal) {
-                axios.get(`${API_URL}/api/inspection-items?category=${newVal}`).then(res => {
-                  setInspectionTypes(res.data.types || []);
-                  setInspectionItems(res.data.items || {});
-                  setInspectionResponses({});
-                  updateField('inspection_type', '');
-                }).catch(() => {});
-              }
-            }}
-          >
-            <Text style={{ fontSize: 20, marginRight: 10 }}>{opt.icon}</Text>
-            <Text style={{
-              flex: 1, fontSize: 14,
-              fontWeight: formData.report_purpose === opt.key ? '700' : '400',
-              color: formData.report_purpose === opt.key ? '#2E7D32' : '#333',
-            }}>{opt.label}</Text>
-            {formData.report_purpose === opt.key && (
-              <Ionicons name="checkmark-circle" size={22} color="#4CAF50" />
-            )}
-          </TouchableOpacity>
-        ))}
+        <Text style={[styles.label, { fontSize: 15, fontWeight: '700', color: '#2E7D32', marginBottom: 4 }]}>Report Type</Text>
+        <Text style={{ fontSize: 12, color: '#689F38', marginBottom: 10 }}>H&S and General Observations are always included. Select additional report types:</Text>
+        {PURPOSE_OPTIONS.map((opt) => {
+          const isSelected = opt.locked || formData.report_types.includes(opt.key);
+          return (
+            <TouchableOpacity
+              key={opt.key}
+              style={[
+                {
+                  flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 10,
+                  backgroundColor: isSelected ? '#C8E6C9' : '#fff',
+                  borderWidth: 1, borderColor: isSelected ? '#4CAF50' : '#E0E0E0',
+                  marginBottom: 8, opacity: opt.locked ? 0.85 : 1,
+                },
+              ]}
+              onPress={() => {
+                if (!opt.locked) {
+                  toggleReportType(opt.key);
+                }
+              }}
+              disabled={opt.locked}
+            >
+              <View style={{
+                width: 24, height: 24, borderRadius: 4, borderWidth: 2,
+                borderColor: isSelected ? '#4CAF50' : '#999',
+                backgroundColor: isSelected ? '#4CAF50' : '#fff',
+                alignItems: 'center', justifyContent: 'center', marginRight: 10,
+              }}>
+                {isSelected && <Ionicons name="checkmark" size={16} color="#fff" />}
+              </View>
+              <Text style={{ fontSize: 20, marginRight: 10 }}>{opt.icon}</Text>
+              <Text style={{
+                flex: 1, fontSize: 14,
+                fontWeight: isSelected ? '700' : '400',
+                color: isSelected ? '#2E7D32' : '#333',
+              }}>{opt.label}</Text>
+              {opt.locked && (
+                <Text style={{ fontSize: 10, color: '#689F38', fontStyle: 'italic' }}>Always</Text>
+              )}
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       <View style={styles.inputGroup}>
@@ -1749,17 +1774,17 @@ export default function FormScreen() {
   };
 
   const renderInspectionStep = () => {
-    const purposeLabel = PURPOSE_LABELS[formData.report_purpose] || 'Inspection';
-    const purposeKey = formData.report_purpose || 'structural';
+    const selectedInspections = formData.report_types.filter(t => t !== 'hs' && t !== 'observations');
+    const purposeLabel = selectedInspections.map(k => PURPOSE_LABELS[k] || k).join(' / ');
     
     return (
     <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
       <View style={[styles.inputGroup, { backgroundColor: '#E8F5E9', borderRadius: 12, padding: 14, marginBottom: 12 }]}>
         <Text style={[styles.label, { fontSize: 16, fontWeight: '700', color: '#2E7D32', marginBottom: 2 }]}>
-          {purposeKey === 'structural' ? 'Building Consent Inspection (Structural)' : purposeLabel}
+          {purposeLabel || 'Inspection'}
         </Text>
         <Text style={{ fontSize: 12, color: '#689F38' }}>
-          {REPORT_PURPOSES_INFO[purposeKey] || 'Complete the inspection items below'}
+          Complete the inspection items below for all selected report types
         </Text>
       </View>
 
@@ -1922,6 +1947,113 @@ export default function FormScreen() {
     </ScrollView>
     );
   };
+
+
+  const renderObservationsStep = () => (
+    <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
+      <View style={[styles.inputGroup, { backgroundColor: '#E8F5E9', borderRadius: 12, padding: 14, marginBottom: 12 }]}>
+        <Text style={[styles.label, { fontSize: 16, fontWeight: '700', color: '#2E7D32', marginBottom: 2 }]}>
+          General Observations
+        </Text>
+        <Text style={{ fontSize: 12, color: '#689F38' }}>
+          Add photos with comments to document general site observations
+        </Text>
+      </View>
+
+      {formData.general_observations.map((obs, index) => (
+        <View key={index} style={{ backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: '#E0E0E0' }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+            <Text style={{ fontWeight: '700', color: '#333' }}>Observation {index + 1}</Text>
+            <TouchableOpacity onPress={() => {
+              const updated = [...formData.general_observations];
+              updated.splice(index, 1);
+              updateField('general_observations', updated);
+            }}>
+              <Ionicons name="trash-outline" size={20} color="#F44336" />
+            </TouchableOpacity>
+          </View>
+          
+          {obs.photo ? (
+            <View style={{ marginBottom: 8 }}>
+              <Image source={{ uri: obs.photo }} style={{ width: '100%', height: 200, borderRadius: 8 }} resizeMode="cover" />
+              <TouchableOpacity
+                style={{ position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 12, padding: 4 }}
+                onPress={() => {
+                  const updated = [...formData.general_observations];
+                  updated[index] = { ...updated[index], photo: '' };
+                  updateField('general_observations', updated);
+                }}
+              >
+                <Ionicons name="close" size={16} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+              <TouchableOpacity
+                style={{ flex: 1, backgroundColor: '#E3F2FD', padding: 12, borderRadius: 8, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' }}
+                onPress={async () => {
+                  try {
+                    const result = await ImagePicker.launchCameraAsync({ base64: true, quality: 0.6 });
+                    if (!result.canceled && result.assets[0].base64) {
+                      const updated = [...formData.general_observations];
+                      updated[index] = { ...updated[index], photo: `data:image/jpeg;base64,${result.assets[0].base64}` };
+                      updateField('general_observations', updated);
+                    }
+                  } catch (e) { console.log(e); }
+                }}
+              >
+                <Ionicons name="camera" size={18} color="#1976D2" />
+                <Text style={{ marginLeft: 6, color: '#1976D2', fontWeight: '600' }}>Camera</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1, backgroundColor: '#F3E5F5', padding: 12, borderRadius: 8, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' }}
+                onPress={async () => {
+                  try {
+                    const result = await ImagePicker.launchImageLibraryAsync({ base64: true, quality: 0.6 });
+                    if (!result.canceled && result.assets[0].base64) {
+                      const updated = [...formData.general_observations];
+                      updated[index] = { ...updated[index], photo: `data:image/jpeg;base64,${result.assets[0].base64}` };
+                      updateField('general_observations', updated);
+                    }
+                  } catch (e) { console.log(e); }
+                }}
+              >
+                <Ionicons name="images" size={18} color="#7B1FA2" />
+                <Text style={{ marginLeft: 6, color: '#7B1FA2', fontWeight: '600' }}>Gallery</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          
+          <TextInput
+            style={{ borderWidth: 1, borderColor: '#E0E0E0', borderRadius: 8, padding: 10, fontSize: 14, minHeight: 60 }}
+            placeholder="Add comment for this observation..."
+            value={obs.comment}
+            onChangeText={(text) => {
+              const updated = [...formData.general_observations];
+              updated[index] = { ...updated[index], comment: text };
+              updateField('general_observations', updated);
+            }}
+            multiline
+          />
+        </View>
+      ))}
+
+      <TouchableOpacity
+        style={{
+          backgroundColor: '#4CAF50', padding: 14, borderRadius: 10,
+          flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+          marginTop: 8,
+        }}
+        onPress={() => {
+          updateField('general_observations', [...formData.general_observations, { photo: '', comment: '' }]);
+        }}
+      >
+        <Ionicons name="add-circle" size={22} color="#fff" />
+        <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15, marginLeft: 8 }}>Add Observation</Text>
+      </TouchableOpacity>
+    </ScrollView>
+  );
+
 
   const renderPhotosStep = () => (
     <ScrollView style={styles.stepContent} showsVerticalScrollIndicator={false}>
@@ -2145,12 +2277,10 @@ export default function FormScreen() {
     if (stepName === 'Site Info') return renderSiteInfoStep();
     if (stepName === 'Hazards') return renderHazardsStep();
     if (stepName === 'Safety') return renderSafetyStep();
+    if (stepName === 'Inspection') return renderInspectionStep();
+    if (stepName === 'Observations') return renderObservationsStep();
     if (stepName === 'Photos') return renderPhotosStep();
     if (stepName === 'Declare') return renderDeclarationStep();
-    // Purpose-specific steps
-    if (['Civil Inspection', 'Survey', 'Structural', 'Meeting'].includes(stepName)) {
-      return renderInspectionStep();
-    }
     return renderSiteInfoStep();
   };
 

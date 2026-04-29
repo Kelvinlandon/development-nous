@@ -224,6 +224,8 @@ class SiteVisitReport(BaseModel):
     inspection_responses: List[InspectionResponse] = []
     # Site Photos
     site_photos: List[SitePhoto] = []
+    # General Observations
+    general_observations: List[Dict[str, Any]] = []
     # Declaration
     staff_print_name: str
     signature_data: str  # base64 encoded signature image or typed name
@@ -291,6 +293,7 @@ class SiteVisitReportCreate(BaseModel):
     cupolex_dramix_fibre_required: Optional[str] = None
     inspection_responses: List[Dict[str, Any]] = []
     site_photos: List[SitePhotoCreate] = []
+    general_observations: List[Dict[str, Any]] = []
     staff_print_name: str
     signature_data: str
     signature_type: str
@@ -916,6 +919,51 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings, purpose_type: s
     
     # Wrap entire declaration in KeepTogether
     story.append(KeepTogether(declaration_elements))
+    
+    # ---- General Observations ----
+    observations = report.general_observations if hasattr(report, 'general_observations') and report.general_observations else []
+    if observations and len(observations) > 0:
+        story.append(Spacer(1, 12))
+        story.append(Paragraph(f"General Observations ({len(observations)})", section_style))
+        story.append(Spacer(1, 6))
+        
+        for i, obs in enumerate(observations):
+            try:
+                comment = obs.get('comment', '') if isinstance(obs, dict) else ''
+                photo_data = obs.get('photo', '') if isinstance(obs, dict) else ''
+                
+                story.append(Paragraph(f"<b>Observation {i+1}</b>", normal_style))
+                if comment:
+                    story.append(Paragraph(comment, normal_style))
+                
+                if photo_data and photo_data.startswith('data:image'):
+                    img_data = photo_data.split(',', 1)[1]
+                    img_bytes = base64.b64decode(img_data)
+                    img_buffer = BytesIO(img_bytes)
+                    img = RLImage(img_buffer)
+                    
+                    orig_w = img.drawWidth
+                    orig_h = img.drawHeight
+                    max_w = 400
+                    max_h = 300
+                    scale = min(max_w / orig_w, max_h / orig_h, 1.0)
+                    img.drawWidth = orig_w * scale
+                    img.drawHeight = orig_h * scale
+                    story.append(img)
+                
+                story.append(Spacer(1, 8))
+                if i < len(observations) - 1:
+                    sep_data = [[""]]
+                    sep = Table(sep_data, colWidths=[440])
+                    sep.setStyle(TableStyle([
+                        ('LINEBELOW', (0, 0), (-1, -1), 0.5, colors.HexColor('#e0e0e0')),
+                        ('TOPPADDING', (0, 0), (-1, -1), 0),
+                        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                    ]))
+                    story.append(sep)
+            except Exception as e:
+                logger.error(f"Error adding observation {i+1}: {e}")
+                story.append(Paragraph(f"[Observation {i+1} could not be loaded]", normal_style))
     
     # ---- Site Photos ----
     if report.site_photos and len(report.site_photos) > 0:
