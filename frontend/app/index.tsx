@@ -126,7 +126,8 @@ export default function HomeScreen() {
           style={styles.secondaryButton}
           onPress={() => router.push('/settings')}
         >
-          <Ionicons name="settings" size={24} color="#4CAF50" />
+          <Ionicons name="settings" size={20} color="#4CAF50" />
+          <Text style={{ fontSize: 11, color: '#4CAF50', fontWeight: '600', marginTop: 2 }}>Settings</Text>
         </TouchableOpacity>
       </View>
 
