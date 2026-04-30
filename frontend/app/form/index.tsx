@@ -2541,20 +2541,26 @@ export default function FormScreen() {
             </View>
             
             <ScrollView style={styles.pickerList}>
-              {staffList.map((staff) => (
+              {staffList.map((staff) => {
+                const isSelected = selectedStaff.includes(staff.name);
+                return (
                 <TouchableOpacity
                   key={staff.id}
-                  style={styles.pickerItem}
+                  style={[styles.pickerItem, isSelected && { backgroundColor: '#E8F5E9' }]}
                   onPress={() => toggleStaffSelection(staff.name)}
                 >
-                  <Ionicons 
-                    name={selectedStaff.includes(staff.name) ? "checkbox" : "square-outline"} 
-                    size={24} 
-                    color={selectedStaff.includes(staff.name) ? "#4CAF50" : "#999"} 
-                  />
-                  <Text style={styles.pickerItemText}>{staff.name}</Text>
+                  <View style={{
+                    width: 26, height: 26, borderRadius: 4, borderWidth: 2,
+                    borderColor: isSelected ? '#4CAF50' : '#999',
+                    backgroundColor: isSelected ? '#4CAF50' : '#fff',
+                    alignItems: 'center', justifyContent: 'center', marginRight: 12,
+                  }}>
+                    {isSelected && <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>✓</Text>}
+                  </View>
+                  <Text style={[styles.pickerItemText, isSelected && { fontWeight: '700', color: '#2E7D32' }]}>{staff.name}</Text>
                 </TouchableOpacity>
-              ))}
+                );
+              })}
               
               {staffList.length === 0 && (
                 <Text style={styles.emptyListText}>No staff members yet. Add one below.</Text>
