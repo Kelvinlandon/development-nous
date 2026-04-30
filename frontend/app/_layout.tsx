@@ -1,7 +1,9 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Image, Animated, StyleSheet, Dimensions } from 'react-native';
+import { View, Image, Animated, StyleSheet, Dimensions, ActivityIndicator, Text } from 'react-native';
+import { useFonts } from 'expo-font';
+import { Ionicons } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window');
 
@@ -9,6 +11,11 @@ export default function RootLayout() {
   const [showSplash, setShowSplash] = useState(true);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
+
+  // Preload icon fonts - critical for Safari/iOS web
+  const [fontsLoaded] = useFonts({
+    ...Ionicons.font,
+  });
 
   useEffect(() => {
     // Scale in
@@ -32,6 +39,16 @@ export default function RootLayout() {
 
     return () => clearTimeout(timer);
   }, []);
+
+  // Wait for fonts to load before showing app
+  if (!fontsLoaded) {
+    return (
+      <View style={splashStyles.container}>
+        <StatusBar style="light" />
+        <ActivityIndicator size="large" color="#4CAF50" />
+      </View>
+    );
+  }
 
   if (showSplash) {
     return (

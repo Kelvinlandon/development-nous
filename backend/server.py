@@ -2393,6 +2393,29 @@ if WEB_DIST.exists():
             return FileResponse(str(file_path), media_type=media_type, headers=headers)
         raise HTTPException(status_code=404, detail="Asset not found")
 
+    @app.api_route("/fonts/{path:path}", methods=["GET", "HEAD", "OPTIONS"])
+    async def serve_fonts(path: str):
+        """Serve font files from clean /fonts/ path - Safari compatible."""
+        decoded_path = unquote(path)
+        file_path = WEB_DIST / "fonts" / decoded_path
+        
+        try:
+            file_path = file_path.resolve()
+            fonts_dir = (WEB_DIST / "fonts").resolve()
+            if not str(file_path).startswith(str(fonts_dir)):
+                raise HTTPException(status_code=403, detail="Forbidden")
+        except (OSError, ValueError):
+            raise HTTPException(status_code=404, detail="Not found")
+        
+        if file_path.exists() and file_path.is_file():
+            media_type = get_mime_type(str(file_path))
+            headers = {
+                "Access-Control-Allow-Origin": "*",
+                "Cache-Control": "public, max-age=31536000, immutable",
+            }
+            return FileResponse(str(file_path), media_type=media_type, headers=headers)
+        raise HTTPException(status_code=404, detail="Font not found")
+
     @app.get("/settings")
     async def serve_settings_page():
         return FileResponse(str(WEB_DIST / "settings.html"))

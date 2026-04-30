@@ -38,7 +38,24 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "headTags": [
+        {
+          "tag": "link",
+          "attrs": {
+            "rel": "preload",
+            "href": "/fonts/Ionicons.ttf",
+            "as": "font",
+            "type": "font/ttf",
+            "crossorigin": "anonymous"
+          }
+        },
+        {
+          "tag": "style",
+          "attrs": {},
+          "innerHTML": "@font-face{font-family:'Ionicons';src:url('/fonts/Ionicons.ttf') format('truetype');font-weight:normal;font-style:normal;font-display:swap}@font-face{font-family:'ionicons';src:url('/fonts/Ionicons.ttf') format('truetype');font-weight:normal;font-style:normal;font-display:swap}"
+        }
+      ]
     },
     "plugins": [
       "expo-router",

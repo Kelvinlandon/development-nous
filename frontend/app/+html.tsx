@@ -12,6 +12,39 @@ export default function Root({ children }: PropsWithChildren) {
           name="viewport"
           content="width=device-width, initial-scale=1, shrink-to-fit=no"
         />
+
+        {/* Preload Ionicons font - critical for Safari/iOS */}
+        <link
+          rel="preload"
+          href="/fonts/Ionicons.ttf"
+          as="font"
+          type="font/ttf"
+          crossOrigin="anonymous"
+        />
+
+        {/* @font-face with clean path for Safari iOS compatibility */}
+        <style
+          id="safari-font-fix"
+          dangerouslySetInnerHTML={{
+            __html: `
+              @font-face {
+                font-family: 'Ionicons';
+                src: url('/fonts/Ionicons.ttf') format('truetype');
+                font-weight: normal;
+                font-style: normal;
+                font-display: swap;
+              }
+              @font-face {
+                font-family: 'ionicons';
+                src: url('/fonts/Ionicons.ttf') format('truetype');
+                font-weight: normal;
+                font-style: normal;
+                font-display: swap;
+              }
+            `,
+          }}
+        />
+
         {/*
           Disable body scrolling on web to make ScrollView components work correctly.
           If you want to enable scrolling, remove `ScrollViewStyleReset` and
