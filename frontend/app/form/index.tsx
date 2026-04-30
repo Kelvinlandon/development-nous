@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Icon from '../../components/Icon';
 import axios from 'axios';
 import Constants from 'expo-constants';
 import SignatureCanvas from 'react-native-signature-canvas';
@@ -1012,7 +1012,7 @@ export default function FormScreen() {
             index < currentStep && styles.stepCircleCompleted,
           ]}>
             {index < currentStep ? (
-              <Ionicons name="checkmark" size={12} color="#fff" />
+              <Icon name="checkmark" size={12} color="#fff" />
             ) : (
               <Text style={[
                 styles.stepNumber,
@@ -1101,7 +1101,7 @@ export default function FormScreen() {
                 backgroundColor: isSelected ? '#4CAF50' : '#fff',
                 alignItems: 'center', justifyContent: 'center', marginRight: 10,
               }}>
-                {isSelected && <Ionicons name="checkmark" size={16} color="#fff" />}
+                {isSelected && <Icon name="checkmark" size={16} color="#fff" />}
               </View>
               <Text style={{ fontSize: 20, marginRight: 10 }}>{opt.icon}</Text>
               <Text style={{
@@ -1123,14 +1123,14 @@ export default function FormScreen() {
           style={styles.pickerButton}
           onPress={() => setShowStaffPicker(true)}
         >
-          <Ionicons name="people-outline" size={20} color="#4CAF50" />
+          <Icon name="people-outline" size={20} color="#4CAF50" />
           <Text style={[
             styles.pickerButtonText,
             !formData.staff_members && styles.pickerButtonPlaceholder
           ]}>
             {formData.staff_members || 'Select staff members'}
           </Text>
-          <Ionicons name="chevron-down" size={20} color="#999" />
+          <Icon name="chevron-down" size={20} color="#999" />
         </TouchableOpacity>
       </View>
 
@@ -1141,7 +1141,7 @@ export default function FormScreen() {
             style={styles.datePickerButton}
             onPress={() => setShowDatePicker(true)}
           >
-            <Ionicons name="calendar-outline" size={20} color="#4CAF50" />
+            <Icon name="calendar-outline" size={20} color="#4CAF50" />
             <Text style={styles.datePickerText}>
               {formatDateForDisplay(selectedDate)}
             </Text>
@@ -1191,14 +1191,14 @@ export default function FormScreen() {
             style={styles.pickerButton}
             onPress={() => setShowJobPicker(true)}
           >
-            <Ionicons name="briefcase-outline" size={20} color="#4CAF50" />
+            <Icon name="briefcase-outline" size={20} color="#4CAF50" />
             <Text style={[
               styles.pickerButtonText,
               !formData.job_no_name && styles.pickerButtonPlaceholder
             ]} numberOfLines={1}>
               {formData.job_no_name || 'Select job'}
             </Text>
-            <Ionicons name="chevron-down" size={20} color="#999" />
+            <Icon name="chevron-down" size={20} color="#999" />
           </TouchableOpacity>
         </View>
       </View>
@@ -1224,7 +1224,7 @@ export default function FormScreen() {
             {validatingAddress ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
-              <Ionicons name="search" size={18} color="#fff" />
+              <Icon name="search" size={18} color="#fff" />
             )}
           </TouchableOpacity>
         </View>
@@ -1239,7 +1239,7 @@ export default function FormScreen() {
                 style={styles.suggestionItem}
                 onPress={() => selectAddressSuggestion(s)}
               >
-                <Ionicons name="location" size={16} color="#4CAF50" />
+                <Icon name="location" size={16} color="#4CAF50" />
                 <Text style={styles.suggestionText} numberOfLines={2}>{s.display_name}</Text>
               </TouchableOpacity>
             ))}
@@ -1255,10 +1255,10 @@ export default function FormScreen() {
         {/* Validated address badge + map link */}
         {addressValidated && formData.job_address_lat && (
           <View style={styles.validatedRow}>
-            <Ionicons name="checkmark-circle" size={18} color="#4CAF50" />
+            <Icon name="checkmark-circle" size={18} color="#4CAF50" />
             <Text style={styles.validatedText}>Address verified</Text>
             <TouchableOpacity style={styles.mapButton} onPress={openInMaps}>
-              <Ionicons name="map-outline" size={16} color="#fff" />
+              <Icon name="map-outline" size={16} color="#fff" />
               <Text style={styles.mapButtonText}>View on Map</Text>
             </TouchableOpacity>
           </View>
@@ -1327,7 +1327,7 @@ export default function FormScreen() {
             style={styles.timePickerButton}
             onPress={() => setShowArrivalTimePicker(true)}
           >
-            <Ionicons name="time-outline" size={20} color="#4CAF50" />
+            <Icon name="time-outline" size={20} color="#4CAF50" />
             <Text style={[
               styles.timePickerText,
               !formData.site_arrival_time && styles.timePickerPlaceholder
@@ -1380,7 +1380,7 @@ export default function FormScreen() {
             style={styles.timePickerButton}
             onPress={() => setShowDepartureTimePicker(true)}
           >
-            <Ionicons name="time-outline" size={20} color="#4CAF50" />
+            <Icon name="time-outline" size={20} color="#4CAF50" />
             <Text style={[
               styles.timePickerText,
               !formData.site_departure_time && styles.timePickerPlaceholder
@@ -1434,14 +1434,14 @@ export default function FormScreen() {
           style={styles.pickerButton}
           onPress={() => setShowSiteTypePicker(true)}
         >
-          <Ionicons name="location-outline" size={20} color="#4CAF50" />
+          <Icon name="location-outline" size={20} color="#4CAF50" />
           <Text style={[
             styles.pickerButtonText,
             !formData.site_description.split('\n')[0] && styles.pickerButtonPlaceholder
           ]} numberOfLines={1}>
             {formData.site_description.split('\n')[0] || 'Select site type'}
           </Text>
-          <Ionicons name="chevron-down" size={20} color="#999" />
+          <Icon name="chevron-down" size={20} color="#999" />
         </TouchableOpacity>
         <TextInput
           style={[styles.input, styles.textArea, { marginTop: 8 }]}
@@ -1527,7 +1527,7 @@ export default function FormScreen() {
             {fetchingWeather ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
-              <Ionicons name="cloud-outline" size={22} color="#fff" />
+              <Icon name="cloud-outline" size={22} color="#fff" />
             )}
           </TouchableOpacity>
         </View>
@@ -1857,7 +1857,7 @@ export default function FormScreen() {
                 Inspection Approved - OK to proceed
               </Text>
               {formData.inspection_result === 'approved' && (
-                <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
+                <Icon name="checkmark-circle" size={24} color="#4CAF50" />
               )}
             </TouchableOpacity>
 
@@ -1884,7 +1884,7 @@ export default function FormScreen() {
                 Inspection Approval pending completion of above
               </Text>
               {formData.inspection_result === 'pending' && (
-                <Ionicons name="warning" size={24} color="#FF9800" />
+                <Icon name="warning" size={24} color="#FF9800" />
               )}
             </TouchableOpacity>
 
@@ -1900,7 +1900,7 @@ export default function FormScreen() {
                     formData.evidence_received && { backgroundColor: '#FF9800', borderColor: '#FF9800' },
                   ]}>
                     {formData.evidence_received && (
-                      <Ionicons name="checkmark" size={16} color="#fff" />
+                      <Icon name="checkmark" size={16} color="#fff" />
                     )}
                   </View>
                   <Text style={styles.evidenceText}>Evidence of work completion received</Text>
@@ -1954,7 +1954,7 @@ export default function FormScreen() {
                 Reinspection required
               </Text>
               {formData.inspection_result === 'reinspection' && (
-                <Ionicons name="alert-circle" size={24} color="#F44336" />
+                <Icon name="alert-circle" size={24} color="#F44336" />
               )}
             </TouchableOpacity>
           </View>
@@ -1985,7 +1985,7 @@ export default function FormScreen() {
               updated.splice(index, 1);
               updateField('general_observations', updated);
             }}>
-              <Ionicons name="trash-outline" size={20} color="#F44336" />
+              <Icon name="trash-outline" size={20} color="#F44336" />
             </TouchableOpacity>
           </View>
           
@@ -2000,7 +2000,7 @@ export default function FormScreen() {
                   updateField('general_observations', updated);
                 }}
               >
-                <Ionicons name="close" size={16} color="#fff" />
+                <Icon name="close" size={16} color="#fff" />
               </TouchableOpacity>
             </View>
           ) : (
@@ -2018,7 +2018,7 @@ export default function FormScreen() {
                   } catch (e) { console.log(e); }
                 }}
               >
-                <Ionicons name="camera" size={18} color="#1976D2" />
+                <Icon name="camera" size={18} color="#1976D2" />
                 <Text style={{ marginLeft: 6, color: '#1976D2', fontWeight: '600' }}>Camera</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -2034,7 +2034,7 @@ export default function FormScreen() {
                   } catch (e) { console.log(e); }
                 }}
               >
-                <Ionicons name="images" size={18} color="#7B1FA2" />
+                <Icon name="images" size={18} color="#7B1FA2" />
                 <Text style={{ marginLeft: 6, color: '#7B1FA2', fontWeight: '600' }}>Gallery</Text>
               </TouchableOpacity>
             </View>
@@ -2064,7 +2064,7 @@ export default function FormScreen() {
           updateField('general_observations', [...formData.general_observations, { photo: '', comment: '' }]);
         }}
       >
-        <Ionicons name="add-circle" size={22} color="#fff" />
+        <Icon name="add-circle" size={22} color="#fff" />
         <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15, marginLeft: 8 }}>Add Observation</Text>
       </TouchableOpacity>
     </ScrollView>
@@ -2083,11 +2083,11 @@ export default function FormScreen() {
       {/* Photo Action Buttons */}
       <View style={styles.photoActions}>
         <TouchableOpacity style={styles.photoActionButton} onPress={takePhoto}>
-          <Ionicons name="camera" size={28} color="#4CAF50" />
+          <Icon name="camera" size={28} color="#4CAF50" />
           <Text style={styles.photoActionText}>Take Photo</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.photoActionButton} onPress={pickFromLibrary}>
-          <Ionicons name="images" size={28} color="#4CAF50" />
+          <Icon name="images" size={28} color="#4CAF50" />
           <Text style={styles.photoActionText}>From Library</Text>
         </TouchableOpacity>
       </View>
@@ -2106,7 +2106,7 @@ export default function FormScreen() {
                 style={styles.removePhotoButton}
                 onPress={() => removePhoto(index)}
               >
-                <Ionicons name="close-circle" size={24} color="#F44336" />
+                <Icon name="close-circle" size={24} color="#F44336" />
               </TouchableOpacity>
               <View style={styles.photoNameBadge}>
                 <Text style={styles.photoNameText}>{photo.caption?.split('\n')[0] || `${getJobPrefix()}-${index + 1}`}</Text>
@@ -2142,7 +2142,7 @@ export default function FormScreen() {
         </View>
       ) : (
         <View style={styles.noPhotosContainer}>
-          <Ionicons name="camera-outline" size={64} color="#ddd" />
+          <Icon name="camera-outline" size={64} color="#ddd" />
           <Text style={styles.noPhotosText}>No photos added yet</Text>
           <Text style={styles.noPhotosSubtext}>Tap the buttons above to add site photos</Text>
         </View>
@@ -2227,7 +2227,7 @@ export default function FormScreen() {
               updateField('signature_data', '');
             }}
           >
-            <Ionicons name="text" size={18} color={formData.signature_type === 'typed' ? '#fff' : '#4CAF50'} />
+            <Icon name="text" size={18} color={formData.signature_type === 'typed' ? '#fff' : '#4CAF50'} />
             <Text style={[
               styles.sigTypeText,
               formData.signature_type === 'typed' && styles.sigTypeTextActive,
@@ -2243,7 +2243,7 @@ export default function FormScreen() {
               updateField('signature_data', '');
             }}
           >
-            <Ionicons name="pencil" size={18} color={formData.signature_type === 'drawn' ? '#fff' : '#4CAF50'} />
+            <Icon name="pencil" size={18} color={formData.signature_type === 'drawn' ? '#fff' : '#4CAF50'} />
             <Text style={[
               styles.sigTypeText,
               formData.signature_type === 'drawn' && styles.sigTypeTextActive,
@@ -2275,7 +2275,7 @@ export default function FormScreen() {
                 <Text style={styles.signatureAdded}>Signature added - Tap to change</Text>
               ) : (
                 <>
-                  <Ionicons name="create-outline" size={32} color="#4CAF50" />
+                  <Icon name="create-outline" size={32} color="#4CAF50" />
                   <Text style={styles.signaturePadText}>Tap to sign</Text>
                 </>
               )}
@@ -2315,14 +2315,14 @@ export default function FormScreen() {
             onPress={prevStep}
             disabled={currentStep === 0}
           >
-            <Ionicons name="chevron-back" size={20} color={currentStep === 0 ? '#ccc' : '#4CAF50'} />
+            <Icon name="chevron-back" size={20} color={currentStep === 0 ? '#ccc' : '#4CAF50'} />
             <Text style={[styles.navButtonText, currentStep === 0 && styles.navButtonTextDisabled]}>Back</Text>
           </TouchableOpacity>
 
           {currentStep < steps.length - 1 ? (
             <TouchableOpacity style={styles.nextButton} onPress={nextStep}>
               <Text style={styles.nextButtonText}>Next</Text>
-              <Ionicons name="chevron-forward" size={20} color="#fff" />
+              <Icon name="chevron-forward" size={20} color="#fff" />
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
@@ -2334,7 +2334,7 @@ export default function FormScreen() {
                 <ActivityIndicator color="#fff" />
               ) : (
                 <>
-                  <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                  <Icon name="checkmark-circle" size={20} color="#fff" />
                   <Text style={styles.submitButtonText}>Submit</Text>
                 </>
               )}
@@ -2352,7 +2352,7 @@ export default function FormScreen() {
         <SafeAreaView style={styles.signatureModal}>
           <View style={styles.signatureHeader}>
             <TouchableOpacity onPress={() => setShowSignaturePad(false)}>
-              <Ionicons name="close" size={28} color="#333" />
+              <Icon name="close" size={28} color="#333" />
             </TouchableOpacity>
             <Text style={styles.signatureModalTitle}>Draw Your Signature</Text>
             <TouchableOpacity onPress={clearSignature}>
@@ -2381,7 +2381,7 @@ export default function FormScreen() {
               style={styles.signatureSaveButton}
               onPress={() => signatureRef.current?.readSignature()}
             >
-              <Ionicons name="checkmark" size={20} color="#fff" />
+              <Icon name="checkmark" size={20} color="#fff" />
               <Text style={styles.signatureSaveText}>Save Signature</Text>
             </TouchableOpacity>
           </View>
@@ -2414,7 +2414,7 @@ export default function FormScreen() {
                 onPress={() => setEmailSelections(prev => ({ ...prev, hs: !prev.hs }))}
               >
                 <View style={{ width: 24, height: 24, borderRadius: 4, borderWidth: 2, borderColor: emailSelections.hs ? '#4CAF50' : '#999', backgroundColor: emailSelections.hs ? '#4CAF50' : '#fff', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                  {emailSelections.hs && <Ionicons name="checkmark" size={16} color="#fff" />}
+                  {emailSelections.hs && <Icon name="checkmark" size={16} color="#fff" />}
                 </View>
                 <Text style={{ fontSize: 15, fontWeight: '600' }}>🛡️ Health & Safety Report (PDF)</Text>
               </TouchableOpacity>
@@ -2426,7 +2426,7 @@ export default function FormScreen() {
                   onPress={() => setEmailSelections(prev => ({ ...prev, structural: !prev.structural }))}
                 >
                   <View style={{ width: 24, height: 24, borderRadius: 4, borderWidth: 2, borderColor: emailSelections.structural ? '#4CAF50' : '#999', backgroundColor: emailSelections.structural ? '#4CAF50' : '#fff', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                    {emailSelections.structural && <Ionicons name="checkmark" size={16} color="#fff" />}
+                    {emailSelections.structural && <Icon name="checkmark" size={16} color="#fff" />}
                   </View>
                   <Text style={{ fontSize: 15, fontWeight: '600' }}>🏛️ Structural Inspection (PDF)</Text>
                 </TouchableOpacity>
@@ -2439,7 +2439,7 @@ export default function FormScreen() {
                   onPress={() => setEmailSelections(prev => ({ ...prev, civil: !prev.civil }))}
                 >
                   <View style={{ width: 24, height: 24, borderRadius: 4, borderWidth: 2, borderColor: emailSelections.civil ? '#4CAF50' : '#999', backgroundColor: emailSelections.civil ? '#4CAF50' : '#fff', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                    {emailSelections.civil && <Ionicons name="checkmark" size={16} color="#fff" />}
+                    {emailSelections.civil && <Icon name="checkmark" size={16} color="#fff" />}
                   </View>
                   <Text style={{ fontSize: 15, fontWeight: '600' }}>🔧 Civil Inspection (PDF)</Text>
                 </TouchableOpacity>
@@ -2452,7 +2452,7 @@ export default function FormScreen() {
                   onPress={() => setEmailSelections(prev => ({ ...prev, surveying: !prev.surveying }))}
                 >
                   <View style={{ width: 24, height: 24, borderRadius: 4, borderWidth: 2, borderColor: emailSelections.surveying ? '#4CAF50' : '#999', backgroundColor: emailSelections.surveying ? '#4CAF50' : '#fff', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                    {emailSelections.surveying && <Ionicons name="checkmark" size={16} color="#fff" />}
+                    {emailSelections.surveying && <Icon name="checkmark" size={16} color="#fff" />}
                   </View>
                   <Text style={{ fontSize: 15, fontWeight: '600' }}>📐 Surveying Report (PDF)</Text>
                 </TouchableOpacity>
@@ -2465,7 +2465,7 @@ export default function FormScreen() {
                   onPress={() => setEmailSelections(prev => ({ ...prev, meeting: !prev.meeting }))}
                 >
                   <View style={{ width: 24, height: 24, borderRadius: 4, borderWidth: 2, borderColor: emailSelections.meeting ? '#4CAF50' : '#999', backgroundColor: emailSelections.meeting ? '#4CAF50' : '#fff', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                    {emailSelections.meeting && <Ionicons name="checkmark" size={16} color="#fff" />}
+                    {emailSelections.meeting && <Icon name="checkmark" size={16} color="#fff" />}
                   </View>
                   <Text style={{ fontSize: 15, fontWeight: '600' }}>🤝 Site Meeting Report (PDF)</Text>
                 </TouchableOpacity>
@@ -2478,7 +2478,7 @@ export default function FormScreen() {
                   onPress={() => setEmailSelections(prev => ({ ...prev, observations: !prev.observations }))}
                 >
                   <View style={{ width: 24, height: 24, borderRadius: 4, borderWidth: 2, borderColor: emailSelections.observations ? '#4CAF50' : '#999', backgroundColor: emailSelections.observations ? '#4CAF50' : '#fff', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                    {emailSelections.observations && <Ionicons name="checkmark" size={16} color="#fff" />}
+                    {emailSelections.observations && <Icon name="checkmark" size={16} color="#fff" />}
                   </View>
                   <Text style={{ fontSize: 15, fontWeight: '600' }}>📋 General Observations (PDF)</Text>
                 </TouchableOpacity>
@@ -2491,7 +2491,7 @@ export default function FormScreen() {
                   onPress={() => setEmailSelections(prev => ({ ...prev, photos: !prev.photos }))}
                 >
                   <View style={{ width: 24, height: 24, borderRadius: 4, borderWidth: 2, borderColor: emailSelections.photos ? '#4CAF50' : '#999', backgroundColor: emailSelections.photos ? '#4CAF50' : '#fff', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                    {emailSelections.photos && <Ionicons name="checkmark" size={16} color="#fff" />}
+                    {emailSelections.photos && <Icon name="checkmark" size={16} color="#fff" />}
                   </View>
                   <Text style={{ fontSize: 15, fontWeight: '600' }}>📷 Site Photos (attachments)</Text>
                 </TouchableOpacity>
@@ -2536,7 +2536,7 @@ export default function FormScreen() {
             <View style={styles.pickerModalHeader}>
               <Text style={styles.pickerModalTitle}>Select Staff Members</Text>
               <TouchableOpacity onPress={() => setShowStaffPicker(false)}>
-                <Ionicons name="close" size={24} color="#333" />
+                <Icon name="close" size={24} color="#333" />
               </TouchableOpacity>
             </View>
             
@@ -2580,7 +2580,7 @@ export default function FormScreen() {
                   style={styles.addNewButton}
                   onPress={addNewStaff}
                 >
-                  <Ionicons name="add" size={24} color="#fff" />
+                  <Icon name="add" size={24} color="#fff" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -2607,7 +2607,7 @@ export default function FormScreen() {
             <View style={styles.pickerModalHeader}>
               <Text style={styles.pickerModalTitle}>Select Job</Text>
               <TouchableOpacity onPress={() => setShowJobPicker(false)}>
-                <Ionicons name="close" size={24} color="#333" />
+                <Icon name="close" size={24} color="#333" />
               </TouchableOpacity>
             </View>
             
@@ -2636,13 +2636,13 @@ export default function FormScreen() {
                     setShowJobPicker(false);
                   }}
                 >
-                  <Ionicons name="briefcase-outline" size={20} color="#4CAF50" />
+                  <Icon name="briefcase-outline" size={20} color="#4CAF50" />
                   <View style={{ flex: 1, marginLeft: 10 }}>
                     <Text style={styles.jobNumber}>{job.job_number}</Text>
                     <Text style={styles.jobName}>{job.job_name}</Text>
                   </View>
                   {formData.job_no_name === `${job.job_number} - ${job.job_name}` && (
-                    <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
+                    <Icon name="checkmark-circle" size={24} color="#4CAF50" />
                   )}
                 </TouchableOpacity>
               ))}
@@ -2671,7 +2671,7 @@ export default function FormScreen() {
                   style={styles.addNewButton}
                   onPress={addNewJob}
                 >
-                  <Ionicons name="add" size={24} color="#fff" />
+                  <Icon name="add" size={24} color="#fff" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -2698,7 +2698,7 @@ export default function FormScreen() {
             <View style={styles.pickerModalHeader}>
               <Text style={styles.pickerModalTitle}>Select Site Type</Text>
               <TouchableOpacity onPress={() => setShowSiteTypePicker(false)}>
-                <Ionicons name="close" size={24} color="#333" />
+                <Icon name="close" size={24} color="#333" />
               </TouchableOpacity>
             </View>
             
@@ -2718,10 +2718,10 @@ export default function FormScreen() {
                       setShowSiteTypePicker(false);
                     }}
                   >
-                    <Ionicons name="location-outline" size={20} color="#4CAF50" />
+                    <Icon name="location-outline" size={20} color="#4CAF50" />
                     <Text style={[styles.pickerItemText, { marginLeft: 10 }]}>{siteType}</Text>
                     {isSelected && (
-                      <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
+                      <Icon name="checkmark-circle" size={24} color="#4CAF50" />
                     )}
                   </TouchableOpacity>
                 );

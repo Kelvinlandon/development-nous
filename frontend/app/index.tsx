@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Icon from '../components/Icon';
 import axios from 'axios';
 import Constants from 'expo-constants';
 
@@ -66,7 +66,7 @@ export default function HomeScreen() {
       <View style={styles.reportHeader}>
         <Text style={styles.reportTitle}>{item.job_no_name}</Text>
         {item.email_sent && (
-          <Ionicons name="mail" size={18} color="#4CAF50" />
+          <Icon name="mail" size={18} color="#4CAF50" />
         )}
       </View>
       <Text style={styles.reportDate}>{item.date}</Text>
@@ -119,14 +119,14 @@ export default function HomeScreen() {
           style={styles.primaryButton}
           onPress={() => router.push('/form')}
         >
-          <Ionicons name="add-circle" size={24} color="#fff" />
+          <Icon name="add-circle" size={24} color="#fff" />
           <Text style={styles.primaryButtonText}>New Site Visit</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.secondaryButton}
           onPress={() => router.push('/settings')}
         >
-          <Ionicons name="settings" size={20} color="#4CAF50" />
+          <Icon name="settings" size={20} color="#4CAF50" />
           <Text style={{ fontSize: 11, color: '#4CAF50', fontWeight: '600', marginTop: 2 }}>Settings</Text>
         </TouchableOpacity>
       </View>
@@ -140,7 +140,7 @@ export default function HomeScreen() {
           </View>
         ) : reports.length === 0 ? (
           <View style={styles.centerContainer}>
-            <Ionicons name="document-text-outline" size={64} color="#ccc" />
+            <Icon name="document-text-outline" size={64} color="#ccc" />
             <Text style={styles.emptyText}>No reports yet</Text>
             <Text style={styles.emptySubtext}>
               Create your first site visit report

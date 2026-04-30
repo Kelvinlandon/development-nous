@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Icon from '../../components/Icon';
 import axios from 'axios';
 import Constants from 'expo-constants';
 import * as FileSystem from 'expo-file-system';
@@ -219,7 +219,7 @@ export default function ReportDetailScreen() {
   if (!report) {
     return (
       <View style={styles.errorContainer}>
-        <Ionicons name="alert-circle" size={64} color="#F44336" />
+        <Icon name="alert-circle" size={64} color="#F44336" />
         <Text style={styles.errorText}>Report not found</Text>
       </View>
     );
@@ -234,7 +234,7 @@ export default function ReportDetailScreen() {
             <Text style={styles.jobName}>{report.job_no_name}</Text>
             {report.email_sent && (
               <View style={styles.emailBadge}>
-                <Ionicons name="mail" size={14} color="#fff" />
+                <Icon name="mail" size={14} color="#fff" />
                 <Text style={styles.emailBadgeText}>Sent</Text>
               </View>
             )}
@@ -330,7 +330,7 @@ export default function ReportDetailScreen() {
                   )}
                   {photo.timestamp && (
                     <View style={styles.metadataRow}>
-                      <Ionicons name="time-outline" size={12} color="#888" />
+                      <Icon name="time-outline" size={12} color="#888" />
                       <Text style={styles.metadataText}>
                         {new Date(photo.timestamp).toLocaleString('en-NZ')}
                       </Text>
@@ -338,12 +338,12 @@ export default function ReportDetailScreen() {
                   )}
                   {photo.address ? (
                     <View style={styles.metadataRow}>
-                      <Ionicons name="location-outline" size={12} color="#888" />
+                      <Icon name="location-outline" size={12} color="#888" />
                       <Text style={styles.metadataText}>{photo.address}</Text>
                     </View>
                   ) : photo.latitude && photo.longitude ? (
                     <View style={styles.metadataRow}>
-                      <Ionicons name="navigate-outline" size={12} color="#888" />
+                      <Icon name="navigate-outline" size={12} color="#888" />
                       <Text style={styles.metadataText}>
                         GPS: {photo.latitude.toFixed(5)}, {photo.longitude.toFixed(5)}
                       </Text>
@@ -358,7 +358,7 @@ export default function ReportDetailScreen() {
         {/* Email Status */}
         {report.email_sent && (
           <View style={styles.emailStatus}>
-            <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
+            <Icon name="checkmark-circle" size={20} color="#4CAF50" />
             <Text style={styles.emailStatusText}>
               Emailed to: {report.email_sent_to}
             </Text>
@@ -374,7 +374,7 @@ export default function ReportDetailScreen() {
           style={styles.deleteButton}
           onPress={deleteReport}
         >
-          <Ionicons name="trash" size={20} color="#F44336" />
+          <Icon name="trash" size={20} color="#F44336" />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -386,7 +386,7 @@ export default function ReportDetailScreen() {
             <ActivityIndicator size="small" color="#4CAF50" />
           ) : (
             <>
-              <Ionicons name="document" size={20} color="#4CAF50" />
+              <Icon name="document" size={20} color="#4CAF50" />
               <Text style={styles.pdfButtonText}>PDF</Text>
             </>
           )}
@@ -401,7 +401,7 @@ export default function ReportDetailScreen() {
             <ActivityIndicator size="small" color="#fff" />
           ) : (
             <>
-              <Ionicons name="mail" size={20} color="#fff" />
+              <Icon name="mail" size={20} color="#fff" />
               <Text style={styles.emailButtonText}>Send Email</Text>
             </>
           )}
@@ -424,12 +424,12 @@ export default function ReportDetailScreen() {
               onPress={() => sendEmail()}
               disabled={sending}
             >
-              <Ionicons name="document-text" size={24} color="#4CAF50" />
+              <Icon name="document-text" size={24} color="#4CAF50" />
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={styles.emailOptionTitle}>Send Report + PDF</Text>
                 <Text style={styles.emailOptionSubtitle}>Email report with PDF attachment</Text>
               </View>
-              {sending ? <ActivityIndicator size="small" color="#4CAF50" /> : <Ionicons name="chevron-forward" size={20} color="#ccc" />}
+              {sending ? <ActivityIndicator size="small" color="#4CAF50" /> : <Icon name="chevron-forward" size={20} color="#ccc" />}
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -437,14 +437,14 @@ export default function ReportDetailScreen() {
               onPress={() => sendPhotosEmail()}
               disabled={sendingPhotos || !report?.site_photos?.length}
             >
-              <Ionicons name="images" size={24} color="#2196F3" />
+              <Icon name="images" size={24} color="#2196F3" />
               <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={styles.emailOptionTitle}>Send Photos</Text>
                 <Text style={styles.emailOptionSubtitle}>
                   {report?.site_photos?.length ? `${report.site_photos.length} photo(s) as attachments` : 'No photos available'}
                 </Text>
               </View>
-              {sendingPhotos ? <ActivityIndicator size="small" color="#2196F3" /> : <Ionicons name="chevron-forward" size={20} color="#ccc" />}
+              {sendingPhotos ? <ActivityIndicator size="small" color="#2196F3" /> : <Icon name="chevron-forward" size={20} color="#ccc" />}
             </TouchableOpacity>
 
             <View style={styles.divider} />

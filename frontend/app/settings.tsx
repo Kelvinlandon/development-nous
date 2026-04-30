@@ -14,7 +14,7 @@ import {
   Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import Icon from '../components/Icon';
 import axios from 'axios';
 import Constants from 'expo-constants';
 
@@ -169,7 +169,7 @@ export default function SettingsScreen() {
           {/* Email Settings */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="mail" size={22} color="#4CAF50" />
+              <Icon name="mail" size={22} color="#4CAF50" />
               <Text style={styles.sectionTitle}>Email Settings</Text>
             </View>
 
@@ -194,7 +194,7 @@ export default function SettingsScreen() {
           {/* SMTP Settings */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="server" size={22} color="#4CAF50" />
+              <Icon name="server" size={22} color="#4CAF50" />
               <Text style={styles.sectionTitle}>SMTP Configuration</Text>
             </View>
 
@@ -271,7 +271,7 @@ export default function SettingsScreen() {
                   onPress={() => setShowPassword(!showPassword)}
                   style={styles.eyeButton}
                 >
-                  <Ionicons
+                  <Icon
                     name={showPassword ? 'eye-off' : 'eye'}
                     size={22}
                     color="#666"
@@ -296,7 +296,7 @@ export default function SettingsScreen() {
           {/* Company Settings */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="business" size={22} color="#4CAF50" />
+              <Icon name="business" size={22} color="#4CAF50" />
               <Text style={styles.sectionTitle}>Company</Text>
             </View>
 
@@ -316,7 +316,7 @@ export default function SettingsScreen() {
           {/* External Data Sync */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="cloud-download" size={22} color="#4CAF50" />
+              <Icon name="cloud-download" size={22} color="#4CAF50" />
               <Text style={styles.sectionTitle}>External Data Sync</Text>
             </View>
             
@@ -414,7 +414,7 @@ export default function SettingsScreen() {
                 <ActivityIndicator color="#fff" />
               ) : (
                 <>
-                  <Ionicons name="sync" size={20} color="#fff" />
+                  <Icon name="sync" size={20} color="#fff" />
                   <Text style={styles.syncButtonText}>Sync Now</Text>
                 </>
               )}
@@ -423,7 +423,7 @@ export default function SettingsScreen() {
 
           {/* Google Sheets Instructions */}
           <View style={styles.infoBox}>
-            <Ionicons name="information-circle" size={20} color="#1976D2" />
+            <Icon name="information-circle" size={20} color="#1976D2" />
             <View style={{ flex: 1 }}>
               <Text style={styles.infoText}>
                 <Text style={{ fontWeight: '700' }}>Google Sheets Setup:{'\n\n'}</Text>
@@ -445,7 +445,7 @@ export default function SettingsScreen() {
 
           {/* SMTP Info Box */}
           <View style={styles.infoBox}>
-            <Ionicons name="information-circle" size={20} color="#1976D2" />
+            <Icon name="information-circle" size={20} color="#1976D2" />
             <View style={{ flex: 1 }}>
               <Text style={styles.infoText}>
                 <Text style={{ fontWeight: '600' }}>Gmail Setup:{'\n'}</Text>
@@ -462,7 +462,7 @@ export default function SettingsScreen() {
           {/* Spreadsheet Report Section */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="stats-chart" size={22} color="#4CAF50" />
+              <Icon name="stats-chart" size={22} color="#4CAF50" />
               <Text style={styles.sectionTitle}>Spreadsheet Reports</Text>
             </View>
             
@@ -525,7 +525,7 @@ export default function SettingsScreen() {
                 <ActivityIndicator color="#fff" />
               ) : (
                 <>
-                  <Ionicons name="document-text" size={20} color="#fff" />
+                  <Icon name="document-text" size={20} color="#fff" />
                   <Text style={styles.syncButtonText}>Send Report Now</Text>
                 </>
               )}
@@ -546,7 +546,7 @@ export default function SettingsScreen() {
               <ActivityIndicator color="#fff" />
             ) : (
               <>
-                <Ionicons name="save" size={20} color="#fff" />
+                <Icon name="save" size={20} color="#fff" />
                 <Text style={styles.saveButtonText}>Save Settings</Text>
               </>
             )}
