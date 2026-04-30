@@ -942,7 +942,7 @@ def generate_pdf(report: SiteVisitReport, settings: AppSettings, purpose_type: s
                     img_data = photo_data.split(',', 1)[1]
                     img_bytes = base64.b64decode(img_data)
                     img_buffer = BytesIO(img_bytes)
-                    img = RLImage(img_buffer)
+                    img = Image(img_buffer)
                     
                     orig_w = img.drawWidth
                     orig_h = img.drawHeight
