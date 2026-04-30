@@ -1514,34 +1514,38 @@ async def estimate_distance(office: str, job_address: str):
             
             # Use OSRM for driving distance
             osrm_url = f"http://router.project-osrm.org/route/v1/driving/{office_lon},{office_lat};{job_lon},{job_lat}"
-            route_resp = await client.get(osrm_url, params={"overview": "false"})
-            route_data = route_resp.json()
+            try:
+                route_resp = await client.get(osrm_url, params={"overview": "false"}, timeout=10.0)
+                if route_resp.status_code == 200:
+                    route_data = route_resp.json()
+                    if route_data.get("code") == "Ok" and route_data.get("routes"):
+                        distance_m = route_data["routes"][0]["distance"]
+                        distance_km = round(distance_m / 1000, 1)
+                        duration_s = route_data["routes"][0]["duration"]
+                        duration_min = round(duration_s / 60)
+                        
+                        return {
+                            "success": True,
+                            "km": distance_km,
+                            "duration_minutes": duration_min,
+                            "office_address": office_address,
+                            "message": f"{distance_km} km ({duration_min} min drive)"
+                        }
+            except Exception as osrm_err:
+                logger.warning(f"OSRM request failed: {osrm_err}")
             
-            if route_data.get("code") == "Ok" and route_data.get("routes"):
-                distance_m = route_data["routes"][0]["distance"]
-                distance_km = round(distance_m / 1000, 1)
-                duration_s = route_data["routes"][0]["duration"]
-                duration_min = round(duration_s / 60)
-                
-                return {
-                    "success": True,
-                    "km": distance_km,
-                    "duration_minutes": duration_min,
-                    "office_address": office_address,
-                    "message": f"{distance_km} km ({duration_min} min drive)"
-                }
-            else:
-                # Fallback: use geopy geodesic distance with road factor
-                from geopy.distance import geodesic
-                straight_line = geodesic((office_lat, office_lon), (job_lat, job_lon)).km
-                estimated_road = round(straight_line * 1.3, 1)
-                return {
-                    "success": True,
-                    "km": estimated_road,
-                    "duration_minutes": None,
-                    "office_address": office_address,
-                    "message": f"~{estimated_road} km (estimated)"
-                }
+            # Fallback: use geopy geodesic distance with road factor
+            from geopy.distance import geodesic
+            straight_line = geodesic((office_lat, office_lon), (job_lat, job_lon)).km
+            estimated_road = round(straight_line * 1.3, 1)
+            estimated_min = round(estimated_road / 60 * 60)  # Assume ~60km/h average
+            return {
+                "success": True,
+                "km": estimated_road,
+                "duration_minutes": estimated_min,
+                "office_address": office_address,
+                "message": f"~{estimated_road} km (~{estimated_min} min drive, estimated)"
+            }
     except Exception as e:
         logger.error(f"Distance estimation error: {e}")
         return {"success": False, "message": str(e), "km": None}
