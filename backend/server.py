@@ -2316,9 +2316,10 @@ app.include_router(api_router)
 # Serve QR code for preview URL
 @app.get("/api/qr")
 async def serve_qr_code():
-    qr_path = ROOT_DIR / "assets" / "preview_qr.png"
-    if qr_path.exists():
-        return FileResponse(str(qr_path), media_type="image/png")
+    from starlette.responses import HTMLResponse
+    qr_html = ROOT_DIR / "assets" / "qr_page.html"
+    if qr_html.exists():
+        return HTMLResponse(content=qr_html.read_text())
     raise HTTPException(status_code=404, detail="QR not found")
 
 # ================== Serve Web App ==================
