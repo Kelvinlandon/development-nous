@@ -2315,11 +2315,6 @@ app.include_router(api_router)
 WEB_DIST = ROOT_DIR / "web_dist"
 
 if WEB_DIST.exists():
-    # Serve static assets (_expo, assets, etc.)
-    app.mount("/_expo", StaticFiles(directory=str(WEB_DIST / "_expo")), name="expo_static")
-    if (WEB_DIST / "assets").exists():
-        app.mount("/assets", StaticFiles(directory=str(WEB_DIST / "assets")), name="web_assets")
-    
     @app.get("/settings")
     async def serve_settings_page():
         return FileResponse(str(WEB_DIST / "settings.html"))
@@ -2358,17 +2353,12 @@ if WEB_DIST.exists():
     async def serve_splash_main():
         return FileResponse(str(WEB_DIST / "splash_main.jpg"))
     
-    # Serve splash screen images
-    @app.get("/splash_{size}.png")
-    async def serve_splash(size: str):
-        splash_file = WEB_DIST / f"splash_{size}.png"
-        if splash_file.exists():
-            return FileResponse(str(splash_file))
-        return FileResponse(str(WEB_DIST / "apple-touch-icon.png"))
-    
     @app.get("/")
     async def serve_home():
         return FileResponse(str(WEB_DIST / "index.html"))
+    
+    # Catch-all: serve any static file from web_dist (fonts, images, JS, etc.)
+    app.mount("/", StaticFiles(directory=str(WEB_DIST), html=False), name="web_static")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
