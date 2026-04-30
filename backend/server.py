@@ -6,7 +6,9 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
+import mimetypes
 from pathlib import Path
+from urllib.parse import unquote
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import uuid
@@ -2314,7 +2316,83 @@ app.include_router(api_router)
 # ================== Serve Web App ==================
 WEB_DIST = ROOT_DIR / "web_dist"
 
+# MIME type overrides for font files (Safari needs correct types)
+FONT_MIME_TYPES = {
+    '.ttf': 'font/ttf',
+    '.woff': 'font/woff',
+    '.woff2': 'font/woff2',
+    '.otf': 'font/otf',
+    '.eot': 'application/vnd.ms-fontobject',
+}
+
+def get_mime_type(file_path: str) -> str:
+    """Get MIME type for a file, with proper font support."""
+    ext = Path(file_path).suffix.lower()
+    if ext in FONT_MIME_TYPES:
+        return FONT_MIME_TYPES[ext]
+    content_type, _ = mimetypes.guess_type(file_path)
+    return content_type or 'application/octet-stream'
+
 if WEB_DIST.exists():
+    @app.options("/assets/{path:path}")
+    async def options_web_assets(path: str):
+        """Handle CORS preflight for font files (Safari PWA)."""
+        from starlette.responses import Response
+        return Response(
+            status_code=204,
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+                "Access-Control-Allow-Headers": "*",
+                "Access-Control-Max-Age": "86400",
+            }
+        )
+    
+    @app.api_route("/assets/{path:path}", methods=["GET", "HEAD"])
+    async def serve_web_assets(path: str):
+        """Serve assets with proper URL decoding for @expo paths and CORS for fonts."""
+        # Decode %40 -> @ and other URL-encoded characters
+        decoded_path = unquote(path)
+        file_path = WEB_DIST / "assets" / decoded_path
+        
+        # Security: prevent path traversal
+        try:
+            file_path = file_path.resolve()
+            assets_dir = (WEB_DIST / "assets").resolve()
+            if not str(file_path).startswith(str(assets_dir)):
+                raise HTTPException(status_code=403, detail="Forbidden")
+        except (OSError, ValueError):
+            raise HTTPException(status_code=404, detail="Not found")
+        
+        if file_path.exists() and file_path.is_file():
+            media_type = get_mime_type(str(file_path))
+            headers = {
+                "Access-Control-Allow-Origin": "*",
+                "Cache-Control": "public, max-age=31536000, immutable",
+            }
+            return FileResponse(str(file_path), media_type=media_type, headers=headers)
+        raise HTTPException(status_code=404, detail="Asset not found")
+    
+    @app.get("/_expo/{path:path}")
+    async def serve_expo_static(path: str):
+        """Serve _expo static JS/CSS bundles."""
+        decoded_path = unquote(path)
+        file_path = WEB_DIST / "_expo" / decoded_path
+        
+        try:
+            file_path = file_path.resolve()
+            expo_dir = (WEB_DIST / "_expo").resolve()
+            if not str(file_path).startswith(str(expo_dir)):
+                raise HTTPException(status_code=403, detail="Forbidden")
+        except (OSError, ValueError):
+            raise HTTPException(status_code=404, detail="Not found")
+        
+        if file_path.exists() and file_path.is_file():
+            media_type = get_mime_type(str(file_path))
+            headers = {"Cache-Control": "public, max-age=31536000, immutable"}
+            return FileResponse(str(file_path), media_type=media_type, headers=headers)
+        raise HTTPException(status_code=404, detail="Asset not found")
+
     @app.get("/settings")
     async def serve_settings_page():
         return FileResponse(str(WEB_DIST / "settings.html"))
@@ -2356,9 +2434,6 @@ if WEB_DIST.exists():
     @app.get("/")
     async def serve_home():
         return FileResponse(str(WEB_DIST / "index.html"))
-    
-    # Catch-all: serve any static file from web_dist (fonts, images, JS, etc.)
-    app.mount("/", StaticFiles(directory=str(WEB_DIST), html=False), name="web_static")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
