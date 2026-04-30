@@ -20,6 +20,26 @@ import Constants from 'expo-constants';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
+// Web-safe alert
+const showAlert = (title: string, message?: string, buttons?: any[]) => {
+  if (Platform.OS === 'web') {
+    if (buttons && buttons.length > 1) {
+      const confirmed = window.confirm(message ? `${title}\n\n${message}` : title);
+      if (confirmed) {
+        const confirmBtn = buttons.find((b: any) => b.style === 'destructive' || b.text !== 'Cancel');
+        if (confirmBtn?.onPress) confirmBtn.onPress();
+      }
+    } else {
+      window.alert(message ? `${title}\n\n${message}` : title);
+      if (buttons && buttons[0]?.onPress) {
+        buttons[0].onPress();
+      }
+    }
+  } else {
+    Alert.alert(title, message, buttons);
+  }
+};
+
 const API_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || 
   process.env.EXPO_PUBLIC_BACKEND_URL || 
   'https://resplendent-passion-production-d644.up.railway.app';
@@ -84,7 +104,7 @@ export default function ReportDetailScreen() {
       setReport(response.data);
     } catch (error) {
       console.error('Error fetching report:', error);
-      Alert.alert('Error', 'Failed to load report');
+      showAlert('Error', 'Failed to load report');
     } finally {
       setLoading(false);
     }
@@ -106,11 +126,11 @@ export default function ReportDetailScreen() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        Alert.alert('Success', 'PDF downloaded successfully');
+        showAlert('Success', 'PDF downloaded successfully');
       } else {
         // For mobile, save and share
         if (!FileSystem.documentDirectory) {
-          Alert.alert('Error', 'File system not available');
+          showAlert('Error', 'File system not available');
           return;
         }
         const fileUri = `${FileSystem.documentDirectory}${filename}`;
@@ -124,13 +144,13 @@ export default function ReportDetailScreen() {
             dialogTitle: 'Share Report PDF',
           });
         } else {
-          Alert.alert('Success', 'PDF saved to documents');
+          showAlert('Success', 'PDF saved to documents');
         }
       }
     } catch (error: any) {
       console.error('Error downloading PDF:', error);
       const errorMsg = error.response?.data?.detail || error.message || 'Failed to download PDF';
-      Alert.alert('Error', errorMsg);
+      showAlert('Error', errorMsg);
     } finally {
       setDownloading(false);
     }
@@ -148,13 +168,13 @@ export default function ReportDetailScreen() {
         ? `Email simulated to ${response.data.recipient}.\n\nTo send real emails, configure Gmail SMTP in Settings.`
         : `Email sent successfully to ${response.data.recipient} with PDF attachment!`;
       
-      Alert.alert(response.data.mocked ? 'Simulated' : 'Email Sent!', message);
+      showAlert(response.data.mocked ? 'Simulated' : 'Email Sent!', message);
       setShowEmailModal(false);
       fetchReport(); // Refresh to show email_sent status
     } catch (error: any) {
       console.error('Error sending email:', error);
       const errorMsg = error.response?.data?.detail || 'Failed to send email. Check SMTP settings.';
-      Alert.alert('Email Failed', errorMsg);
+      showAlert('Email Failed', errorMsg);
     } finally {
       setSending(false);
     }
@@ -162,7 +182,7 @@ export default function ReportDetailScreen() {
 
   const sendPhotosEmail = async (email?: string) => {
     if (!report?.site_photos || report.site_photos.length === 0) {
-      Alert.alert('No Photos', 'This report has no photos to send.');
+      showAlert('No Photos', 'This report has no photos to send.');
       return;
     }
     setSendingPhotos(true);
@@ -172,7 +192,7 @@ export default function ReportDetailScreen() {
         recipient_email: email || null,
       });
       
-      Alert.alert(
+      showAlert(
         response.data.mocked ? 'Simulated' : 'Photos Sent!',
         response.data.message
       );
@@ -180,14 +200,14 @@ export default function ReportDetailScreen() {
     } catch (error: any) {
       console.error('Error sending photos:', error);
       const errorMsg = error.response?.data?.detail || 'Failed to send photos.';
-      Alert.alert('Failed', errorMsg);
+      showAlert('Failed', errorMsg);
     } finally {
       setSendingPhotos(false);
     }
   };
 
   const deleteReport = () => {
-    Alert.alert(
+    showAlert(
       'Delete Report',
       'Are you sure you want to delete this report?',
       [
@@ -200,7 +220,7 @@ export default function ReportDetailScreen() {
               await axios.delete(`${API_URL}/api/reports/${id}`);
               router.replace('/');
             } catch (error) {
-              Alert.alert('Error', 'Failed to delete report');
+              showAlert('Error', 'Failed to delete report');
             }
           },
         },

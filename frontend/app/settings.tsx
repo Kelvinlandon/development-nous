@@ -18,6 +18,15 @@ import Icon from '../components/Icon';
 import axios from 'axios';
 import Constants from 'expo-constants';
 
+// Web-safe alert that works on Safari iOS
+const showAlert = (title: string, message?: string) => {
+  if (Platform.OS === 'web') {
+    window.alert(message ? `${title}\n\n${message}` : title);
+  } else {
+    Alert.alert(title, message || '');
+  }
+};
+
 const API_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || 
   process.env.EXPO_PUBLIC_BACKEND_URL || 
   'https://resplendent-passion-production-d644.up.railway.app';
@@ -83,10 +92,10 @@ export default function SettingsScreen() {
     setSaving(true);
     try {
       await axios.put(`${API_URL}/api/settings`, settings);
-      Alert.alert('Success', 'Settings saved successfully');
+      showAlert('Success', 'Settings saved successfully');
     } catch (error) {
       console.error('Error saving settings:', error);
-      Alert.alert('Error', 'Failed to save settings');
+      showAlert('Error', 'Failed to save settings');
     } finally {
       setSaving(false);
     }
@@ -94,7 +103,7 @@ export default function SettingsScreen() {
 
   const syncFromCSV = async () => {
     if (!settings.staff_csv_url && !settings.jobs_csv_url) {
-      Alert.alert('No URLs', 'Please enter at least one CSV URL before syncing');
+      showAlert('No URLs', 'Please enter at least one CSV URL before syncing');
       return;
     }
     
@@ -122,16 +131,16 @@ export default function SettingsScreen() {
       }
       
       if (response.data.success) {
-        Alert.alert(
+        showAlert(
           'Sync Complete', 
           `Synced ${response.data.staff_count} staff members and ${response.data.jobs_count} jobs${inspMsg}`
         );
       } else {
-        Alert.alert('Sync Issue', response.data.message + inspMsg);
+        showAlert('Sync Issue', response.data.message + inspMsg);
       }
     } catch (error) {
       console.error('Error syncing:', error);
-      Alert.alert('Error', 'Failed to sync from CSV');
+      showAlert('Error', 'Failed to sync from CSV');
     } finally {
       setSyncing(false);
     }
@@ -142,9 +151,9 @@ export default function SettingsScreen() {
     try {
       const recipient = settings.report_recipient_email || settings.default_recipient_email;
       const response = await axios.post(`${API_URL}/api/reports/spreadsheet-email?recipient_email=${encodeURIComponent(recipient)}`);
-      Alert.alert(response.data.success ? 'Report Sent!' : 'Error', response.data.message);
+      showAlert(response.data.success ? 'Report Sent!' : 'Error', response.data.message);
     } catch (error: any) {
-      Alert.alert('Failed', error.response?.data?.detail || 'Failed to send spreadsheet report');
+      showAlert('Failed', error.response?.data?.detail || 'Failed to send spreadsheet report');
     } finally {
       setSendingReport(false);
     }
