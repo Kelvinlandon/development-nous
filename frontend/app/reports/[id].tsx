@@ -248,6 +248,15 @@ export default function ReportDetailScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* Back Button - reliable on Safari web */}
+        {Platform.OS === 'web' && (
+          <TouchableOpacity
+            onPress={() => router.replace('/')}
+            style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 4 }}
+          >
+            <Text style={{ fontSize: 18, color: '#4CAF50', fontWeight: '600' }}>← Back to Reports</Text>
+          </TouchableOpacity>
+        )}
         {/* Header Info */}
         <View style={styles.section}>
           <View style={styles.headerRow}>
